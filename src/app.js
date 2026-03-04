@@ -13,6 +13,13 @@ import {
 
 const READY_MESSAGE = "Ready.";
 
+function toLocalDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const rootElement = document.getElementById("app");
 const viewRefs = buildMainView(rootElement);
 
@@ -20,6 +27,8 @@ let appState = {
   entries: [],
   activeEntry: null,
   message: READY_MESSAGE,
+  dayOverviewMode: "today",
+  dayOverviewDateISO: toLocalDateInputValue(),
 };
 
 function render() {
@@ -31,6 +40,8 @@ function applyResult(result) {
     entries: result.entries,
     activeEntry: result.activeEntry,
     message: result.message,
+    dayOverviewMode: appState.dayOverviewMode,
+    dayOverviewDateISO: appState.dayOverviewDateISO,
   };
   render();
 }
@@ -57,11 +68,18 @@ function closeEditSheet() {
 
 async function initialize() {
   const initialState = await getInitialState();
+  const todayDateISO = toLocalDateInputValue();
   appState = {
     entries: initialState.entries,
     activeEntry: initialState.activeEntry,
     message: READY_MESSAGE,
+    dayOverviewMode: "today",
+    dayOverviewDateISO: todayDateISO,
   };
+
+  viewRefs.dayOverviewHistoricDate.value = todayDateISO;
+  viewRefs.dayOverviewHistoricDate.max = todayDateISO;
+
   render();
 }
 
@@ -120,6 +138,36 @@ function handleSheetKeydown(event) {
   }
 }
 
+function setDayOverviewMode(mode) {
+  appState = {
+    ...appState,
+    dayOverviewMode: mode,
+  };
+  render();
+}
+
+function handleOverviewTodayClick() {
+  setDayOverviewMode("today");
+}
+
+function handleOverviewHistoricClick() {
+  setDayOverviewMode("historic");
+}
+
+function handleOverviewHistoricDateChange(event) {
+  const nextDate = event.target.value;
+  if (!nextDate) {
+    return;
+  }
+
+  appState = {
+    ...appState,
+    dayOverviewDateISO: nextDate,
+    dayOverviewMode: "historic",
+  };
+  render();
+}
+
 viewRefs.checkInButton.addEventListener("click", handleCheckIn);
 viewRefs.checkOutButton.addEventListener("click", handleCheckOut);
 viewRefs.historyBody.addEventListener("click", handleHistoryActionClick);
@@ -127,6 +175,9 @@ viewRefs.editActiveButton.addEventListener("click", handleActiveEditClick);
 viewRefs.editCancelButton.addEventListener("click", closeEditSheet);
 viewRefs.editSheetBackdrop.addEventListener("click", closeEditSheet);
 viewRefs.editSaveButton.addEventListener("click", handleEditSave);
+viewRefs.dayOverviewTodayButton.addEventListener("click", handleOverviewTodayClick);
+viewRefs.dayOverviewHistoricButton.addEventListener("click", handleOverviewHistoricClick);
+viewRefs.dayOverviewHistoricDate.addEventListener("change", handleOverviewHistoricDateChange);
 document.addEventListener("keydown", handleSheetKeydown);
 
 initialize();

@@ -3,6 +3,9 @@ const VIEW_SELECTORS = {
   statusMeta: "#status-meta",
   editActiveButton: "#edit-active-btn",
   dayOverviewDate: "#day-overview-date",
+  dayOverviewTodayButton: "#day-overview-today-btn",
+  dayOverviewHistoricButton: "#day-overview-historic-btn",
+  dayOverviewHistoricDate: "#day-overview-historic-date",
   dayOverviewTotal: "#day-overview-total",
   dayOverviewSessions: "#day-overview-sessions",
   dayOverviewAverage: "#day-overview-average",
@@ -51,7 +54,34 @@ export function buildMainView(rootElement) {
     <section class="panel day-overview" aria-labelledby="day-overview-title">
       <div class="day-overview__header">
         <h2 id="day-overview-title">Day Overview</h2>
+        <div class="day-overview__mode" role="tablist" aria-label="Day overview mode">
+          <button
+            id="day-overview-today-btn"
+            class="overview-tab is-active"
+            type="button"
+            role="tab"
+            aria-selected="true"
+          >
+            Today
+          </button>
+          <button
+            id="day-overview-historic-btn"
+            class="overview-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+          >
+            Historic
+          </button>
+        </div>
+      </div>
+
+      <div class="day-overview__filters">
         <span id="day-overview-date" class="day-overview__date">Today</span>
+        <label class="day-overview__date-wrap" for="day-overview-historic-date">
+          <span class="sr-only">Select historic date</span>
+          <input id="day-overview-historic-date" class="day-overview__date-input" type="date" />
+        </label>
       </div>
 
       <div class="day-overview__total">

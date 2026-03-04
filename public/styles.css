@@ -121,6 +121,41 @@ p {
   gap: 0.75rem;
 }
 
+.day-overview__mode {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.14rem;
+}
+
+.overview-tab {
+  border: none;
+  background: transparent;
+  padding: 0.32rem 0.58rem;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.overview-tab.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.09);
+}
+
+.day-overview__filters {
+  margin-top: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
 .day-overview__date {
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid var(--border);
@@ -130,6 +165,33 @@ p {
   font-weight: 600;
   color: var(--text-secondary);
   white-space: nowrap;
+}
+
+.day-overview__date-wrap {
+  display: flex;
+}
+
+.day-overview__date-input {
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.35rem 0.48rem;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .day-overview__total {
@@ -255,7 +317,9 @@ p {
 }
 
 .btn:focus-visible,
-.field-input:focus-visible {
+.field-input:focus-visible,
+.overview-tab:focus-visible,
+.day-overview__date-input:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }

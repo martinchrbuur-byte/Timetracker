@@ -19,16 +19,34 @@ function formatMinutesToLabel(totalMinutes) {
   return `${hours}h ${minutes}m`;
 }
 
-function buildDayOverview(entries, activeEntry) {
+function parseDateInputValue(value) {
+  if (typeof value !== "string" || value.length !== 10) {
+    return null;
+  }
+
+  const [year, month, day] = value.split("-").map((part) => Number(part));
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  return new Date(year, month - 1, day);
+}
+
+function buildDayOverview(entries, activeEntry, mode, dayOverviewDateISO) {
   const now = new Date();
-  const todayEntries = entries.filter((entry) =>
-    isSameLocalDay(new Date(entry.checkInAt), now)
+  const targetDate = mode === "historic" ? parseDateInputValue(dayOverviewDateISO) || now : now;
+  const dayEntries = entries.filter((entry) =>
+    isSameLocalDay(new Date(entry.checkInAt), targetDate)
   );
 
-  const sessionCount = todayEntries.length;
-  const durationMinutes = todayEntries.map((entry) => {
+  const sessionCount = dayEntries.length;
+  const durationMinutes = dayEntries.map((entry) => {
     const start = toTimestamp(entry.checkInAt);
-    const end = entry.checkOutAt ? toTimestamp(entry.checkOutAt) : now.getTime();
+    const end = entry.checkOutAt
+      ? toTimestamp(entry.checkOutAt)
+      : isSameLocalDay(targetDate, now)
+        ? now.getTime()
+        : start;
     const diff = Math.max(0, Math.floor((end - start) / 60000));
     return Number.isFinite(diff) ? diff : 0;
   });
@@ -44,22 +62,32 @@ function buildDayOverview(entries, activeEntry) {
     insight = `Longest session: ${formatMinutesToLabel(longestMinutes)}`;
   }
 
-  if (activeEntry && isSameLocalDay(new Date(activeEntry.checkInAt), now)) {
+  if (activeEntry && mode === "today" && isSameLocalDay(new Date(activeEntry.checkInAt), now)) {
     insight = "You’re currently checked in.";
     insightState = "active";
   }
 
+  const isTodayMode = mode === "today";
+  const dateLabel = isTodayMode
+    ? `Today · ${now.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      })}`
+    : targetDate.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+
   return {
-    dateLabel: `Today · ${now.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    })}`,
+    dateLabel,
     totalLabel: formatMinutesToLabel(totalMinutes),
     sessionsLabel: String(sessionCount),
     averageLabel: averageMinutes === null ? "--" : formatMinutesToLabel(averageMinutes),
     insight,
     insightState,
     isEmpty: sessionCount === 0,
+    isTodayMode,
   };
 }
 
@@ -108,7 +136,12 @@ function renderHistory(historyBody, entries) {
 
 export function renderTrackerState(refs, state) {
   const isActive = Boolean(state.activeEntry);
-  const dayOverview = buildDayOverview(state.entries, state.activeEntry);
+  const dayOverview = buildDayOverview(
+    state.entries,
+    state.activeEntry,
+    state.dayOverviewMode,
+    state.dayOverviewDateISO
+  );
 
   refs.statusLabel.textContent = isActive ? "Checked In" : "Checked Out";
   refs.statusLabel.classList.toggle("active", isActive);
@@ -128,6 +161,13 @@ export function renderTrackerState(refs, state) {
   refs.dayOverviewInsight.textContent = dayOverview.insight;
   refs.dayOverviewInsight.classList.toggle("day-overview__insight--active", dayOverview.insightState === "active");
   refs.dayOverviewInsight.classList.toggle("day-overview__insight--empty", dayOverview.isEmpty);
+
+  refs.dayOverviewTodayButton.classList.toggle("is-active", dayOverview.isTodayMode);
+  refs.dayOverviewHistoricButton.classList.toggle("is-active", !dayOverview.isTodayMode);
+  refs.dayOverviewTodayButton.setAttribute("aria-selected", String(dayOverview.isTodayMode));
+  refs.dayOverviewHistoricButton.setAttribute("aria-selected", String(!dayOverview.isTodayMode));
+  refs.dayOverviewHistoricDate.hidden = dayOverview.isTodayMode;
+  refs.dayOverviewHistoricDate.value = state.dayOverviewDateISO;
 
   refs.message.textContent = state.message;
 
