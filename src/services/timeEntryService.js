@@ -16,6 +16,9 @@ const MESSAGES = {
   UPDATE_SUCCESS: "Session times updated successfully.",
   UPDATE_ERROR: "Update failed due to a storage error.",
   UPDATE_NOT_FOUND: "Cannot edit: session not found.",
+  DELETE_SUCCESS: "Session deleted successfully.",
+  DELETE_ERROR: "Delete failed due to a storage error.",
+  DELETE_NOT_FOUND: "Cannot delete: session not found.",
   INVALID_CHECK_IN: "Invalid check-in date/time.",
   INVALID_CHECK_OUT: "Invalid check-out date/time.",
   CHECK_OUT_EARLY: "Check-out cannot be earlier than check-in.",
@@ -201,5 +204,23 @@ export async function updateEntryTimes(entryId, nextCheckInAt, nextCheckOutAt, u
   } catch (error) {
     const allEntries = await readEntries().catch(() => []);
     return buildResult(allEntries, userId, MESSAGES.UPDATE_ERROR);
+  }
+}
+
+export async function deleteEntry(entryId, userId = "default") {
+  try {
+    const allEntries = await readEntries();
+    const userEntries = filterEntriesByUser(allEntries, userId);
+    const targetEntry = userEntries.find((entry) => entry.id === entryId);
+
+    if (!targetEntry) {
+      return buildResult(allEntries, userId, MESSAGES.DELETE_NOT_FOUND);
+    }
+
+    const updatedEntries = allEntries.filter((entry) => entry.id !== entryId);
+    return buildResult(updatedEntries, userId, MESSAGES.DELETE_SUCCESS, true);
+  } catch (error) {
+    const allEntries = await readEntries().catch(() => []);
+    return buildResult(allEntries, userId, MESSAGES.DELETE_ERROR);
   }
 }

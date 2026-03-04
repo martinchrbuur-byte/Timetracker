@@ -3,6 +3,7 @@ import { renderTrackerState } from "./ui/checkView.js";
 import {
   checkIn,
   checkOut,
+  deleteEntry,
   getInitialState,
   updateEntryTimes,
 } from "./services/timeEntryService.js";
@@ -196,10 +197,35 @@ async function handleEditSave() {
     return;
   }
 
-  applyResult(
-    await updateEntryTimes(entryId, checkInIso, checkOutIso, appState.currentUserId)
-  );
-  closeEditSheet();
+  const result = await updateEntryTimes(entryId, checkInIso, checkOutIso, appState.currentUserId);
+  applyResult(result);
+
+  if (result.message === "Session times updated successfully.") {
+    closeEditSheet();
+  }
+}
+
+async function handleEditDelete() {
+  if (!appState.isAuthenticated || !appState.currentUserId) {
+    appState = {
+      ...appState,
+      message: "You must be signed in to edit entries.",
+    };
+    render();
+    return;
+  }
+
+  const entryId = viewRefs.editEntryIdInput.value;
+  if (!entryId) {
+    return;
+  }
+
+  const result = await deleteEntry(entryId, appState.currentUserId);
+  applyResult(result);
+
+  if (result.message === "Session deleted successfully.") {
+    closeEditSheet();
+  }
 }
 
 function handleHistoryActionClick(event) {
@@ -375,6 +401,7 @@ viewRefs.historyBody.addEventListener("click", handleHistoryActionClick);
 viewRefs.editActiveButton.addEventListener("click", handleActiveEditClick);
 viewRefs.editCancelButton.addEventListener("click", closeEditSheet);
 viewRefs.editSheetBackdrop.addEventListener("click", closeEditSheet);
+viewRefs.editDeleteButton.addEventListener("click", handleEditDelete);
 viewRefs.editSaveButton.addEventListener("click", handleEditSave);
 viewRefs.dayOverviewTodayButton.addEventListener("click", handleOverviewTodayClick);
 viewRefs.dayOverviewHistoricButton.addEventListener("click", handleOverviewHistoricClick);

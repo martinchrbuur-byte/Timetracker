@@ -37,6 +37,7 @@ const VIEW_SELECTORS = {
   editEntryIdInput: "#edit-entry-id",
   editCheckInInput: "#edit-check-in",
   editCheckOutInput: "#edit-check-out",
+  editDeleteButton: "#edit-delete-btn",
   editCancelButton: "#edit-cancel-btn",
   editSaveButton: "#edit-save-btn",
 };
@@ -206,6 +207,7 @@ export function buildMainView(rootElement) {
         <p class="field-help">Leave check-out empty to keep session active.</p>
 
         <div class="sheet-actions">
+          <button id="edit-delete-btn" class="btn btn-secondary" type="button">Delete</button>
           <button id="edit-cancel-btn" class="btn btn-secondary" type="button">Cancel</button>
           <button id="edit-save-btn" class="btn btn-primary" type="button">Save</button>
         </div>

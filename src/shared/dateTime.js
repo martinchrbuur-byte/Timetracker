@@ -32,7 +32,49 @@ export function localDateTimeInputToIso(localValue) {
     return null;
   }
 
-  const timestamp = toTimestamp(localValue);
+  const normalizedValue = String(localValue).trim();
+
+  const isoLikeMatch = normalizedValue.match(
+    /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?$/
+  );
+
+  if (isoLikeMatch) {
+    const [, year, month, day, hour, minute, second = "00"] = isoLikeMatch;
+    const parsed = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      Number(second)
+    );
+
+    if (Number.isFinite(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+  }
+
+  const localizedMatch = normalizedValue.match(
+    /^(\d{2})[./-](\d{2})[./-](\d{4})[T\s](\d{2}):(\d{2})(?::(\d{2}))?$/
+  );
+
+  if (localizedMatch) {
+    const [, day, month, year, hour, minute, second = "00"] = localizedMatch;
+    const parsed = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      Number(second)
+    );
+
+    if (Number.isFinite(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+  }
+
+  const timestamp = toTimestamp(normalizedValue);
   if (!Number.isFinite(timestamp)) {
     return null;
   }

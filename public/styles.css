@@ -460,20 +460,18 @@ p {
   animation: fade-in 180ms ease both;
 }
 
-/* Bottom-sheet keeps primary actions inside thumb zone on large iPhones. */
 .edit-sheet-panel {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 50%;
+  top: 50%;
+  width: min(560px, calc(100% - 2rem));
+  transform: translate(-50%, -50%);
   background: var(--surface);
-  border-radius: 20px 20px 0 0;
+  border-radius: 18px;
   border: 1px solid var(--border);
-  border-bottom: none;
   padding: 1rem;
-  max-height: calc(100dvh - 0.65rem);
+  max-height: calc(100dvh - 2rem);
   overflow: auto;
-  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   animation: sheet-up 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -503,14 +501,9 @@ p {
 
 .sheet-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
   margin-top: 1rem;
-  position: sticky;
-  bottom: calc(-1rem - env(safe-area-inset-bottom));
-  background: var(--surface);
-  padding-top: 0.75rem;
-  padding-bottom: calc(0.3rem + env(safe-area-inset-bottom));
 }
 
 @keyframes card-in {
@@ -568,14 +561,4 @@ p {
     max-width: 360px;
   }
 
-  .edit-sheet-panel {
-    left: 50%;
-    right: auto;
-    bottom: auto;
-    top: 50%;
-    width: min(560px, calc(100% - 2rem));
-    transform: translate(-50%, -50%);
-    border-radius: 18px;
-    border-bottom: 1px solid var(--border);
-  }
 }
