@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify required files
+        run: |
+          test -f index.html
+          test -f public/index.html
+          test -f public/styles.css
+          test -f src/app.js
+          test -f src/ui/mainView.js
+          test -f src/ui/checkView.js
+          test -f src/models/timeEntry.js
+          test -f src/services/storageService.js
+          test -f src/services/timeEntryService.js
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check src/app.js
+          node --check src/ui/mainView.js
+          node --check src/ui/checkView.js
+          node --check src/models/timeEntry.js
+          node --check src/services/storageService.js
+          node --check src/services/timeEntryService.js
