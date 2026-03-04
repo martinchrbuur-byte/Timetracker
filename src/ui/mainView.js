@@ -2,6 +2,11 @@ const VIEW_SELECTORS = {
   statusLabel: "#status-label",
   statusMeta: "#status-meta",
   editActiveButton: "#edit-active-btn",
+  dayOverviewDate: "#day-overview-date",
+  dayOverviewTotal: "#day-overview-total",
+  dayOverviewSessions: "#day-overview-sessions",
+  dayOverviewAverage: "#day-overview-average",
+  dayOverviewInsight: "#day-overview-insight",
   message: "#message",
   checkInButton: "#check-in-btn",
   checkOutButton: "#check-out-btn",
@@ -43,22 +48,39 @@ export function buildMainView(rootElement) {
       </div>
     </section>
 
+    <section class="panel day-overview" aria-labelledby="day-overview-title">
+      <div class="day-overview__header">
+        <h2 id="day-overview-title">Day Overview</h2>
+        <span id="day-overview-date" class="day-overview__date">Today</span>
+      </div>
+
+      <div class="day-overview__total">
+        <p id="day-overview-total" class="day-overview__total-value">0h 0m</p>
+        <p class="day-overview__total-label">Total worked today</p>
+      </div>
+
+      <div class="day-overview__metrics">
+        <article class="metric-card" aria-label="Session count">
+          <p id="day-overview-sessions" class="metric-value">0</p>
+          <p class="metric-label">Sessions</p>
+        </article>
+        <article class="metric-card" aria-label="Average session duration">
+          <p id="day-overview-average" class="metric-value">--</p>
+          <p class="metric-label">Avg Session</p>
+        </article>
+      </div>
+
+      <p id="day-overview-insight" class="day-overview__insight">No sessions logged today yet.</p>
+    </section>
+
     <section class="panel" aria-labelledby="history-title">
       <h2 id="history-title">Recent Sessions</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Date</th>
-              <th scope="col">Check In</th>
-              <th scope="col">Check Out</th>
-              <th scope="col">Duration</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="history-body"></tbody>
-        </table>
-      </div>
+      <div
+        id="history-body"
+        class="session-list"
+        role="list"
+        aria-label="Recent work sessions"
+      ></div>
     </section>
 
     <div id="edit-sheet" class="edit-sheet" hidden>
