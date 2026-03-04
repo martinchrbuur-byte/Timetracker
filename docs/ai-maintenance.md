@@ -5,9 +5,11 @@
 - `src/app.js` is the orchestration layer only (event wiring + UI/service coordination).
 - `src/services/timeEntryService.js` is the single source of truth for business rules.
 - `src/services/storageService.js` is the only module that talks to `localStorage`.
+- `src/services/storageService.js` is the only module that talks to persistence providers (localStorage/Supabase).
 - `src/ui/mainView.js` owns static markup and element references.
 - `src/ui/checkView.js` owns state-to-DOM rendering only.
 - `src/shared/dateTime.js` centralizes date parsing/formatting/conversion.
+- `src/config/appConfig.js` owns runtime config resolution for provider selection.
 
 ## Invariants to Preserve
 
@@ -15,6 +17,7 @@
 - Entry intervals must not overlap.
 - `checkOutAt` cannot be earlier than `checkInAt`.
 - Storage payload must stay compatible with `STORAGE_KEY` and `isTimeEntryRecord`.
+- Supabase row mapping must stay compatible with `time_entries` (`check_in_at`, `check_out_at`).
 
 ## Safe Extension Workflow
 

@@ -4,7 +4,6 @@ import {
   checkIn,
   checkOut,
   getInitialState,
-  getViewState,
   updateEntryTimes,
 } from "./services/timeEntryService.js";
 import {
@@ -14,7 +13,6 @@ import {
 
 const READY_MESSAGE = "Ready.";
 
-// App controller owns event wiring and delegates all business rules to services.
 const rootElement = document.getElementById("app");
 const viewRefs = buildMainView(rootElement);
 
@@ -25,7 +23,7 @@ let appState = {
 };
 
 function render() {
-  renderTrackerState(viewRefs, getViewState(appState.entries, appState.message));
+  renderTrackerState(viewRefs, appState);
 }
 
 function applyResult(result) {
@@ -57,8 +55,8 @@ function closeEditSheet() {
   viewRefs.editCheckOutInput.value = "";
 }
 
-function initialize() {
-  const initialState = getInitialState();
+async function initialize() {
+  const initialState = await getInitialState();
   appState = {
     entries: initialState.entries,
     activeEntry: initialState.activeEntry,
@@ -67,15 +65,15 @@ function initialize() {
   render();
 }
 
-function handleCheckIn() {
-  applyResult(checkIn());
+async function handleCheckIn() {
+  applyResult(await checkIn());
 }
 
-function handleCheckOut() {
-  applyResult(checkOut());
+async function handleCheckOut() {
+  applyResult(await checkOut());
 }
 
-function handleEditSave() {
+async function handleEditSave() {
   const entryId = viewRefs.editEntryIdInput.value;
   const checkInIso = localDateTimeInputToIso(viewRefs.editCheckInInput.value);
   const checkOutIso = localDateTimeInputToIso(viewRefs.editCheckOutInput.value);
@@ -89,7 +87,7 @@ function handleEditSave() {
     return;
   }
 
-  applyResult(updateEntryTimes(entryId, checkInIso, checkOutIso));
+  applyResult(await updateEntryTimes(entryId, checkInIso, checkOutIso));
   closeEditSheet();
 }
 

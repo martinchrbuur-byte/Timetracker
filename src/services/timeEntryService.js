@@ -25,7 +25,8 @@ const MESSAGES = {
 
 function sortEntriesByLatestCheckIn(entries) {
   return [...entries].sort(
-    (leftEntry, rightEntry) => toTimestamp(rightEntry.checkInAt) - toTimestamp(leftEntry.checkInAt)
+    (leftEntry, rightEntry) =>
+      toTimestamp(rightEntry.checkInAt) - toTimestamp(leftEntry.checkInAt)
   );
 }
 
@@ -37,15 +38,16 @@ function getEndTimestamp(checkOutAt) {
   return checkOutAt === null ? Number.POSITIVE_INFINITY : toTimestamp(checkOutAt);
 }
 
-function readEntries() {
-  return sortEntriesByLatestCheckIn(loadEntriesFromStorage());
+async function readEntries() {
+  const entries = await loadEntriesFromStorage();
+  return sortEntriesByLatestCheckIn(entries);
 }
 
-function buildResult(entries, message, shouldPersist = false) {
+async function buildResult(entries, message, shouldPersist = false) {
   const sortedEntries = sortEntriesByLatestCheckIn(entries);
 
   if (shouldPersist) {
-    saveEntriesToStorage(sortedEntries);
+    await saveEntriesToStorage(sortedEntries);
   }
 
   return {
@@ -101,21 +103,21 @@ function validateEditTimes(entries, targetEntryId, nextCheckInAt, nextCheckOutAt
   return null;
 }
 
-export function getInitialState() {
-  const entries = readEntries();
+export async function getInitialState() {
+  const entries = await readEntries();
   return {
     entries,
     activeEntry: findActiveEntry(entries),
   };
 }
 
-export function getViewState(entries, message) {
+export async function getViewState(entries, message) {
   return buildResult(entries, message || MESSAGES.READY);
 }
 
-export function checkIn() {
+export async function checkIn() {
   try {
-    const entries = readEntries();
+    const entries = await readEntries();
     const activeEntry = findActiveEntry(entries);
 
     if (activeEntry) {
@@ -125,13 +127,14 @@ export function checkIn() {
     const newEntry = createTimeEntry();
     return buildResult([newEntry, ...entries], MESSAGES.CHECKED_IN, true);
   } catch (error) {
-    return buildResult(readEntries(), MESSAGES.CHECK_IN_ERROR);
+    const entries = await readEntries().catch(() => []);
+    return buildResult(entries, MESSAGES.CHECK_IN_ERROR);
   }
 }
 
-export function checkOut() {
+export async function checkOut() {
   try {
-    const entries = readEntries();
+    const entries = await readEntries();
     const activeEntry = findActiveEntry(entries);
 
     if (!activeEntry) {
@@ -149,13 +152,14 @@ export function checkOut() {
 
     return buildResult(updatedEntries, MESSAGES.CHECKED_OUT, true);
   } catch (error) {
-    return buildResult(readEntries(), MESSAGES.CHECK_OUT_ERROR);
+    const entries = await readEntries().catch(() => []);
+    return buildResult(entries, MESSAGES.CHECK_OUT_ERROR);
   }
 }
 
-export function updateEntryTimes(entryId, nextCheckInAt, nextCheckOutAt) {
+export async function updateEntryTimes(entryId, nextCheckInAt, nextCheckOutAt) {
   try {
-    const entries = readEntries();
+    const entries = await readEntries();
     const targetEntry = entries.find((entry) => entry.id === entryId);
 
     if (!targetEntry) {
@@ -185,6 +189,7 @@ export function updateEntryTimes(entryId, nextCheckInAt, nextCheckOutAt) {
 
     return buildResult(updatedEntries, MESSAGES.UPDATE_SUCCESS, true);
   } catch (error) {
-    return buildResult(readEntries(), MESSAGES.UPDATE_ERROR);
+    const entries = await readEntries().catch(() => []);
+    return buildResult(entries, MESSAGES.UPDATE_ERROR);
   }
 }

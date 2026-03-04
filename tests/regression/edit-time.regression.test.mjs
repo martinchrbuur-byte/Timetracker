@@ -37,26 +37,26 @@ beforeEach(() => {
   globalThis.localStorage = createMemoryStorage();
 });
 
-test("1) checkIn creates active session", () => {
-  const result = checkIn();
+test("1) checkIn creates active session", async () => {
+  const result = await checkIn();
 
   assert.ok(result.activeEntry);
   assert.equal(result.message, "Checked in successfully.");
 });
 
-test("2) checkOut clears active session", () => {
-  checkIn();
-  const result = checkOut();
+test("2) checkOut clears active session", async () => {
+  await checkIn();
+  const result = await checkOut();
 
   assert.equal(result.activeEntry, null);
   assert.equal(result.message, "Checked out successfully.");
 });
 
-test("3) valid edit updates session times", () => {
-  const checkedIn = checkIn();
+test("3) valid edit updates session times", async () => {
+  const checkedIn = await checkIn();
   const entryId = checkedIn.activeEntry.id;
 
-  const result = updateEntryTimes(
+  const result = await updateEntryTimes(
     entryId,
     FIXTURE_TIMES.DAY_START,
     FIXTURE_TIMES.DAY_END
@@ -68,11 +68,11 @@ test("3) valid edit updates session times", () => {
   assert.equal(updated.checkOutAt, FIXTURE_TIMES.DAY_END);
 });
 
-test("4) rejects checkOut earlier than checkIn", () => {
-  const checkedIn = checkIn();
+test("4) rejects checkOut earlier than checkIn", async () => {
+  const checkedIn = await checkIn();
   const entryId = checkedIn.activeEntry.id;
 
-  const result = updateEntryTimes(
+  const result = await updateEntryTimes(
     entryId,
     FIXTURE_TIMES.INVALID_START,
     FIXTURE_TIMES.INVALID_END
@@ -81,7 +81,7 @@ test("4) rejects checkOut earlier than checkIn", () => {
   assert.equal(result.message, "Check-out cannot be earlier than check-in.");
 });
 
-test("5) rejects overlapping edited interval", () => {
+test("5) rejects overlapping edited interval", async () => {
   seedEntries([
     {
       id: "a",
@@ -95,7 +95,7 @@ test("5) rejects overlapping edited interval", () => {
     },
   ]);
 
-  const result = updateEntryTimes(
+  const result = await updateEntryTimes(
     "b",
     "2026-03-04T09:30:00.000Z",
     "2026-03-04T12:00:00.000Z"
@@ -104,7 +104,7 @@ test("5) rejects overlapping edited interval", () => {
   assert.equal(result.message, "Cannot save: session overlaps another entry.");
 });
 
-test("6) allows setting one entry active when no other active exists", () => {
+test("6) allows setting one entry active when no other active exists", async () => {
   seedEntries([
     {
       id: "a",
@@ -118,14 +118,14 @@ test("6) allows setting one entry active when no other active exists", () => {
     },
   ]);
 
-  const result = updateEntryTimes("b", "2026-03-04T13:30:00.000Z", null);
+  const result = await updateEntryTimes("b", "2026-03-04T13:30:00.000Z", null);
 
   assert.equal(result.message, "Session times updated successfully.");
   assert.ok(result.activeEntry);
   assert.equal(result.activeEntry.id, "b");
 });
 
-test("7) rejects second active session", () => {
+test("7) rejects second active session", async () => {
   seedEntries([
     {
       id: "a",
@@ -139,7 +139,7 @@ test("7) rejects second active session", () => {
     },
   ]);
 
-  const result = updateEntryTimes("a", "2026-03-04T07:30:00.000Z", null);
+  const result = await updateEntryTimes("a", "2026-03-04T07:30:00.000Z", null);
 
   assert.equal(
     result.message,
