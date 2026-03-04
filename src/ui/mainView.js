@@ -1,4 +1,14 @@
 const VIEW_SELECTORS = {
+  authPanel: "#auth-panel",
+  authEmailInput: "#auth-email",
+  authPasswordInput: "#auth-password",
+  authSignInButton: "#auth-signin-btn",
+  authSignUpButton: "#auth-signup-btn",
+  authSignOutButton: "#auth-signout-btn",
+  authStatus: "#auth-status",
+  statusPanel: "#status-panel",
+  dayOverviewPanel: "#day-overview-panel",
+  historyPanel: "#history-panel",
   statusLabel: "#status-label",
   statusMeta: "#status-meta",
   editActiveButton: "#edit-active-btn",
@@ -44,7 +54,24 @@ export function buildMainView(rootElement) {
       <p class="subtitle">Track check-in/check-out timestamps locally in your browser.</p>
     </section>
 
-    <section class="panel" aria-labelledby="status-title">
+    <section id="auth-panel" class="panel" aria-labelledby="auth-title">
+      <h2 id="auth-title">Account</h2>
+      <label class="field-label" for="auth-email">Email</label>
+      <input id="auth-email" class="field-input" type="email" autocomplete="email" />
+
+      <label class="field-label" for="auth-password">Password</label>
+      <input id="auth-password" class="field-input" type="password" autocomplete="current-password" />
+
+      <div class="actions">
+        <button id="auth-signin-btn" class="btn btn-primary" type="button">Sign In</button>
+        <button id="auth-signup-btn" class="btn btn-secondary" type="button">Sign Up</button>
+        <button id="auth-signout-btn" class="btn btn-secondary" type="button">Sign Out</button>
+      </div>
+
+      <p id="auth-status" class="status-meta" role="status" aria-live="polite">Signed out.</p>
+    </section>
+
+    <section id="status-panel" class="panel" aria-labelledby="status-title">
       <h2 id="status-title">Current Status</h2>
       <div id="status-label" class="status-label inactive">Checked Out</div>
       <p id="status-meta" class="status-meta">No active session.</p>
@@ -57,7 +84,7 @@ export function buildMainView(rootElement) {
       </div>
     </section>
 
-    <section class="panel day-overview" aria-labelledby="day-overview-title">
+    <section id="day-overview-panel" class="panel day-overview" aria-labelledby="day-overview-title">
       <div class="day-overview__header">
         <h2 id="day-overview-title">Day Overview</h2>
         <div class="day-overview__mode" role="tablist" aria-label="Day overview mode">
@@ -144,7 +171,7 @@ export function buildMainView(rootElement) {
       <p id="day-overview-insight" class="day-overview__insight">No sessions logged today yet.</p>
     </section>
 
-    <section class="panel" aria-labelledby="history-title">
+    <section id="history-panel" class="panel" aria-labelledby="history-title">
       <h2 id="history-title">Recent Sessions</h2>
       <div
         id="history-body"

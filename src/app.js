@@ -6,6 +6,7 @@ import {
   getInitialState,
   updateEntryTimes,
 } from "./services/timeEntryService.js";
+import { restoreSession, signIn, signOut, signUp } from "./services/authService.js";
 import {
   localDateTimeInputToIso,
   toLocalDateTimeInputValue,
@@ -24,6 +25,9 @@ const rootElement = document.getElementById("app");
 const viewRefs = buildMainView(rootElement);
 
 let appState = {
+  isAuthenticated: false,
+  authUserId: null,
+  authEmail: "",
   currentUserId: "default",
   entries: [],
   activeEntry: null,
@@ -68,6 +72,16 @@ function closeEditSheet() {
 }
 
 async function refreshEntriesForCurrentUser() {
+  if (!appState.isAuthenticated || !appState.currentUserId) {
+    appState = {
+      ...appState,
+      entries: [],
+      activeEntry: null,
+    };
+    render();
+    return;
+  }
+
   const initialState = await getInitialState(appState.currentUserId);
   appState = {
     ...appState,
@@ -79,14 +93,24 @@ async function refreshEntriesForCurrentUser() {
 
 async function initialize() {
   try {
-    const initialState = await getInitialState("default");
+    const restored = await restoreSession();
+    const restoredUserId = restored.user?.id || null;
+    const restoredEmail = restored.user?.email || "";
+    const initialState = restoredUserId
+      ? await getInitialState(restoredUserId)
+      : { entries: [], activeEntry: null };
     const todayDateISO = toLocalDateInputValue();
 
     appState = {
-      currentUserId: "default",
+      isAuthenticated: Boolean(restoredUserId),
+      authUserId: restoredUserId,
+      authEmail: restoredEmail,
+      currentUserId: restoredUserId || "default",
       entries: initialState.entries,
       activeEntry: initialState.activeEntry,
-      message: READY_MESSAGE,
+      message: restoredUserId
+        ? READY_MESSAGE
+        : "Sign in or sign up to start tracking time.",
       dayOverviewMode: "today",
       dayOverviewDateISO: todayDateISO,
       dayOverviewHistoricRange: "week",
@@ -106,14 +130,41 @@ async function initialize() {
 }
 
 async function handleCheckIn() {
+  if (!appState.isAuthenticated || !appState.currentUserId) {
+    appState = {
+      ...appState,
+      message: "You must be signed in to check in.",
+    };
+    render();
+    return;
+  }
+
   applyResult(await checkIn(appState.currentUserId));
 }
 
 async function handleCheckOut() {
+  if (!appState.isAuthenticated || !appState.currentUserId) {
+    appState = {
+      ...appState,
+      message: "You must be signed in to check out.",
+    };
+    render();
+    return;
+  }
+
   applyResult(await checkOut(appState.currentUserId));
 }
 
 async function handleEditSave() {
+  if (!appState.isAuthenticated || !appState.currentUserId) {
+    appState = {
+      ...appState,
+      message: "You must be signed in to edit entries.",
+    };
+    render();
+    return;
+  }
+
   const entryId = viewRefs.editEntryIdInput.value;
   const checkInIso = localDateTimeInputToIso(viewRefs.editCheckInInput.value);
   const checkOutIso = localDateTimeInputToIso(viewRefs.editCheckOutInput.value);
@@ -211,6 +262,95 @@ function handleOverviewRangeClick(event) {
   render();
 }
 
+function readAuthFormValues() {
+  return {
+    email: viewRefs.authEmailInput.value.trim().toLowerCase(),
+    password: viewRefs.authPasswordInput.value,
+  };
+}
+
+async function applyAuthenticatedUser(user, message) {
+  const userId = user?.id || null;
+  const email = user?.email || "";
+
+  appState = {
+    ...appState,
+    isAuthenticated: Boolean(userId),
+    authUserId: userId,
+    authEmail: email,
+    currentUserId: userId || "default",
+    message,
+  };
+
+  viewRefs.authPasswordInput.value = "";
+  await refreshEntriesForCurrentUser();
+}
+
+async function handleSignUp() {
+  try {
+    const { email, password } = readAuthFormValues();
+    const result = await signUp(email, password);
+
+    if (!result.session || !result.user?.id) {
+      appState = {
+        ...appState,
+        message: "Sign-up successful. Verify your email, then sign in.",
+      };
+      viewRefs.authPasswordInput.value = "";
+      render();
+      return;
+    }
+
+    await applyAuthenticatedUser(result.user, "Signed up successfully.");
+  } catch (error) {
+    appState = {
+      ...appState,
+      message: `Sign-up failed: ${error.message}`,
+    };
+    render();
+  }
+}
+
+async function handleSignIn() {
+  try {
+    const { email, password } = readAuthFormValues();
+    const result = await signIn(email, password);
+
+    await applyAuthenticatedUser(result.user, "Signed in successfully.");
+  } catch (error) {
+    appState = {
+      ...appState,
+      message: `Sign-in failed: ${error.message}`,
+    };
+    render();
+  }
+}
+
+async function handleSignOut() {
+  try {
+    await signOut();
+
+    appState = {
+      ...appState,
+      isAuthenticated: false,
+      authUserId: null,
+      authEmail: "",
+      currentUserId: "default",
+      entries: [],
+      activeEntry: null,
+      message: "Signed out.",
+    };
+    closeEditSheet();
+    render();
+  } catch (error) {
+    appState = {
+      ...appState,
+      message: `Sign-out failed: ${error.message}`,
+    };
+    render();
+  }
+}
+
 viewRefs.checkInButton.addEventListener("click", handleCheckIn);
 viewRefs.checkOutButton.addEventListener("click", handleCheckOut);
 viewRefs.historyBody.addEventListener("click", handleHistoryActionClick);
@@ -222,6 +362,9 @@ viewRefs.dayOverviewTodayButton.addEventListener("click", handleOverviewTodayCli
 viewRefs.dayOverviewHistoricButton.addEventListener("click", handleOverviewHistoricClick);
 viewRefs.dayOverviewHistoricDate.addEventListener("change", handleOverviewHistoricDateChange);
 viewRefs.dayOverviewRangeGroup.addEventListener("click", handleOverviewRangeClick);
+viewRefs.authSignInButton.addEventListener("click", handleSignIn);
+viewRefs.authSignUpButton.addEventListener("click", handleSignUp);
+viewRefs.authSignOutButton.addEventListener("click", handleSignOut);
 document.addEventListener("keydown", handleSheetKeydown);
 
 initialize();

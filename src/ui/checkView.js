@@ -193,6 +193,27 @@ function renderHistory(historyBody, entries) {
 }
 
 export function renderTrackerState(refs, state) {
+  const isAuthenticated = Boolean(state.isAuthenticated);
+
+  refs.authEmailInput.disabled = isAuthenticated;
+  refs.authPasswordInput.disabled = isAuthenticated;
+  refs.authSignInButton.hidden = isAuthenticated;
+  refs.authSignUpButton.hidden = isAuthenticated;
+  refs.authSignOutButton.hidden = !isAuthenticated;
+  refs.authStatus.textContent = isAuthenticated
+    ? `Signed in as ${state.authEmail || "user"}.`
+    : "Signed out.";
+
+  refs.statusPanel.hidden = !isAuthenticated;
+  refs.dayOverviewPanel.hidden = !isAuthenticated;
+  refs.historyPanel.hidden = !isAuthenticated;
+
+  if (!isAuthenticated) {
+    refs.message.textContent = state.message;
+    refs.editSheet.hidden = true;
+    return;
+  }
+
   const isActive = Boolean(state.activeEntry);
   const dayOverview = buildDayOverview(
     state.entries,
