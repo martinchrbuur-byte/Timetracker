@@ -34,6 +34,10 @@ function findActiveEntry(entries) {
   return entries.find((entry) => entry.checkOutAt === null) || null;
 }
 
+function filterEntriesByUser(entries, userId) {
+  return entries.filter((entry) => entry.userId === userId);
+}
+
 function getEndTimestamp(checkOutAt) {
   return checkOutAt === null ? Number.POSITIVE_INFINITY : toTimestamp(checkOutAt);
 }
@@ -43,16 +47,18 @@ async function readEntries() {
   return sortEntriesByLatestCheckIn(entries);
 }
 
-async function buildResult(entries, message, shouldPersist = false) {
-  const sortedEntries = sortEntriesByLatestCheckIn(entries);
+async function buildResult(allEntries, userId, message, shouldPersist = false) {
+  const sortedAllEntries = sortEntriesByLatestCheckIn(allEntries);
 
   if (shouldPersist) {
-    await saveEntriesToStorage(sortedEntries);
+    await saveEntriesToStorage(sortedAllEntries);
   }
 
+  const userEntries = sortEntriesByLatestCheckIn(filterEntriesByUser(sortedAllEntries, userId));
+
   return {
-    entries: sortedEntries,
-    activeEntry: findActiveEntry(sortedEntries),
+    entries: userEntries,
+    activeEntry: findActiveEntry(userEntries),
     message,
   };
 }
@@ -103,45 +109,48 @@ function validateEditTimes(entries, targetEntryId, nextCheckInAt, nextCheckOutAt
   return null;
 }
 
-export async function getInitialState() {
-  const entries = await readEntries();
+export async function getInitialState(userId = "default") {
+  const allEntries = await readEntries();
+  const entries = sortEntriesByLatestCheckIn(filterEntriesByUser(allEntries, userId));
   return {
     entries,
     activeEntry: findActiveEntry(entries),
   };
 }
 
-export async function getViewState(entries, message) {
-  return buildResult(entries, message || MESSAGES.READY);
+export async function getViewState(entries, userId, message) {
+  return buildResult(entries, userId, message || MESSAGES.READY);
 }
 
-export async function checkIn() {
+export async function checkIn(userId = "default") {
   try {
-    const entries = await readEntries();
-    const activeEntry = findActiveEntry(entries);
+    const allEntries = await readEntries();
+    const userEntries = filterEntriesByUser(allEntries, userId);
+    const activeEntry = findActiveEntry(userEntries);
 
     if (activeEntry) {
-      return buildResult(entries, MESSAGES.CHECK_IN_BLOCKED);
+      return buildResult(allEntries, userId, MESSAGES.CHECK_IN_BLOCKED);
     }
 
-    const newEntry = createTimeEntry();
-    return buildResult([newEntry, ...entries], MESSAGES.CHECKED_IN, true);
+    const newEntry = createTimeEntry(new Date().toISOString(), userId);
+    return buildResult([newEntry, ...allEntries], userId, MESSAGES.CHECKED_IN, true);
   } catch (error) {
-    const entries = await readEntries().catch(() => []);
-    return buildResult(entries, MESSAGES.CHECK_IN_ERROR);
+    const allEntries = await readEntries().catch(() => []);
+    return buildResult(allEntries, userId, MESSAGES.CHECK_IN_ERROR);
   }
 }
 
-export async function checkOut() {
+export async function checkOut(userId = "default") {
   try {
-    const entries = await readEntries();
-    const activeEntry = findActiveEntry(entries);
+    const allEntries = await readEntries();
+    const userEntries = filterEntriesByUser(allEntries, userId);
+    const activeEntry = findActiveEntry(userEntries);
 
     if (!activeEntry) {
-      return buildResult(entries, MESSAGES.CHECK_OUT_BLOCKED);
+      return buildResult(allEntries, userId, MESSAGES.CHECK_OUT_BLOCKED);
     }
 
-    const updatedEntries = entries.map((entry) =>
+    const updatedEntries = allEntries.map((entry) =>
       entry.id === activeEntry.id
         ? {
             ...entry,
@@ -150,34 +159,35 @@ export async function checkOut() {
         : entry
     );
 
-    return buildResult(updatedEntries, MESSAGES.CHECKED_OUT, true);
+    return buildResult(updatedEntries, userId, MESSAGES.CHECKED_OUT, true);
   } catch (error) {
-    const entries = await readEntries().catch(() => []);
-    return buildResult(entries, MESSAGES.CHECK_OUT_ERROR);
+    const allEntries = await readEntries().catch(() => []);
+    return buildResult(allEntries, userId, MESSAGES.CHECK_OUT_ERROR);
   }
 }
 
-export async function updateEntryTimes(entryId, nextCheckInAt, nextCheckOutAt) {
+export async function updateEntryTimes(entryId, nextCheckInAt, nextCheckOutAt, userId = "default") {
   try {
-    const entries = await readEntries();
-    const targetEntry = entries.find((entry) => entry.id === entryId);
+    const allEntries = await readEntries();
+    const userEntries = filterEntriesByUser(allEntries, userId);
+    const targetEntry = userEntries.find((entry) => entry.id === entryId);
 
     if (!targetEntry) {
-      return buildResult(entries, MESSAGES.UPDATE_NOT_FOUND);
+      return buildResult(allEntries, userId, MESSAGES.UPDATE_NOT_FOUND);
     }
 
     const validationMessage = validateEditTimes(
-      entries,
+      userEntries,
       entryId,
       nextCheckInAt,
       nextCheckOutAt
     );
 
     if (validationMessage) {
-      return buildResult(entries, validationMessage);
+      return buildResult(allEntries, userId, validationMessage);
     }
 
-    const updatedEntries = entries.map((entry) =>
+    const updatedEntries = allEntries.map((entry) =>
       entry.id === entryId
         ? {
             ...entry,
@@ -187,9 +197,9 @@ export async function updateEntryTimes(entryId, nextCheckInAt, nextCheckOutAt) {
         : entry
     );
 
-    return buildResult(updatedEntries, MESSAGES.UPDATE_SUCCESS, true);
+    return buildResult(updatedEntries, userId, MESSAGES.UPDATE_SUCCESS, true);
   } catch (error) {
-    const entries = await readEntries().catch(() => []);
-    return buildResult(entries, MESSAGES.UPDATE_ERROR);
+    const allEntries = await readEntries().catch(() => []);
+    return buildResult(allEntries, userId, MESSAGES.UPDATE_ERROR);
   }
 }

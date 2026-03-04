@@ -71,6 +71,54 @@ p {
   line-height: 1.5;
 }
 
+.user-toolbar {
+  margin-top: 0.9rem;
+}
+
+.user-toolbar__label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.user-toolbar__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.user-select {
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.5rem 0.7rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.user-add-btn {
+  min-height: 46px;
+  padding-left: 0.85rem;
+  padding-right: 0.85rem;
+}
+
+.user-toolbar__auth {
+  margin-top: 0.5rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+}
+
+.user-auth-input {
+  min-height: 42px;
+  font-size: 0.92rem;
+}
+
 /* Status chip stays textual-first for clarity and accessibility. */
 .status-label {
   display: inline-flex;
@@ -331,7 +379,8 @@ p {
 .btn:focus-visible,
 .field-input:focus-visible,
 .overview-tab:focus-visible,
-.day-overview__date-input:focus-visible {
+.day-overview__date-input:focus-visible,
+.user-select:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }

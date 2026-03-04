@@ -7,9 +7,17 @@ import {
   updateEntryTimes,
 } from "./services/timeEntryService.js";
 import {
+  addUser,
+  getUsersState,
+  restoreSignedInUser,
+  signInUser,
+  signOutUser,
+} from "./services/userService.js";
+import {
   localDateTimeInputToIso,
   toLocalDateTimeInputValue,
 } from "./shared/dateTime.js";
+import { isSupabasePersistenceEnabled } from "./config/appConfig.js";
 
 const READY_MESSAGE = "Ready.";
 
@@ -24,6 +32,9 @@ const rootElement = document.getElementById("app");
 const viewRefs = buildMainView(rootElement);
 
 let appState = {
+  users: [],
+  currentUserId: "default",
+  isAuthenticated: false,
   entries: [],
   activeEntry: null,
   message: READY_MESSAGE,
@@ -32,18 +43,48 @@ let appState = {
   dayOverviewHistoricRange: "week",
 };
 
+function renderUserSelect() {
+  viewRefs.userSelect.innerHTML = appState.users
+    .map(
+      (user) =>
+        `<option value="${user.id}" ${user.id === appState.currentUserId ? "selected" : ""}>${user.name}</option>`
+    )
+    .join("");
+}
+
+function renderAuthButton() {
+  if (!isSupabasePersistenceEnabled()) {
+    viewRefs.authFields.hidden = true;
+    viewRefs.authEmailInput.hidden = true;
+    viewRefs.authPasswordInput.hidden = true;
+    viewRefs.authNameInput.hidden = true;
+    viewRefs.authActionButton.hidden = true;
+    return;
+  }
+
+  viewRefs.authFields.hidden = false;
+  viewRefs.authEmailInput.hidden = false;
+  viewRefs.authPasswordInput.hidden = false;
+  viewRefs.authNameInput.hidden = appState.isAuthenticated;
+  viewRefs.authActionButton.hidden = false;
+  viewRefs.authActionButton.textContent = appState.isAuthenticated ? "Sign out" : "Sign in";
+  viewRefs.authEmailInput.disabled = appState.isAuthenticated;
+  viewRefs.authPasswordInput.disabled = appState.isAuthenticated;
+  viewRefs.authNameInput.disabled = appState.isAuthenticated;
+}
+
 function render() {
+  renderUserSelect();
+  renderAuthButton();
   renderTrackerState(viewRefs, appState);
 }
 
 function applyResult(result) {
   appState = {
+    ...appState,
     entries: result.entries,
     activeEntry: result.activeEntry,
     message: result.message,
-    dayOverviewMode: appState.dayOverviewMode,
-    dayOverviewDateISO: appState.dayOverviewDateISO,
-    dayOverviewHistoricRange: appState.dayOverviewHistoricRange,
   };
   render();
 }
@@ -68,13 +109,31 @@ function closeEditSheet() {
   viewRefs.editCheckOutInput.value = "";
 }
 
-async function initialize() {
-  const initialState = await getInitialState();
-  const todayDateISO = toLocalDateInputValue();
+async function refreshEntriesForCurrentUser() {
+  const initialState = await getInitialState(appState.currentUserId);
   appState = {
+    ...appState,
     entries: initialState.entries,
     activeEntry: initialState.activeEntry,
-    message: READY_MESSAGE,
+  };
+  render();
+}
+
+async function initialize() {
+  const usersState = await getUsersState();
+  const restoredAuth = await restoreSignedInUser();
+  const users = restoredAuth.users?.length ? restoredAuth.users : usersState.users;
+  const currentUserId = restoredAuth.currentUserId || users[0]?.id || "default";
+  const initialState = await getInitialState(currentUserId);
+  const todayDateISO = toLocalDateInputValue();
+
+  appState = {
+    users,
+    currentUserId,
+    isAuthenticated: restoredAuth.isAuthenticated,
+    entries: initialState.entries,
+    activeEntry: initialState.activeEntry,
+    message: restoredAuth.message || READY_MESSAGE,
     dayOverviewMode: "today",
     dayOverviewDateISO: todayDateISO,
     dayOverviewHistoricRange: "week",
@@ -82,16 +141,24 @@ async function initialize() {
 
   viewRefs.dayOverviewHistoricDate.value = todayDateISO;
   viewRefs.dayOverviewHistoricDate.max = todayDateISO;
+  viewRefs.addUserButton.textContent = isSupabasePersistenceEnabled()
+    ? "Sign up"
+    : "Add user";
+  if (isSupabasePersistenceEnabled()) {
+    viewRefs.authEmailInput.value = "";
+    viewRefs.authPasswordInput.value = "";
+    viewRefs.authNameInput.value = "";
+  }
 
   render();
 }
 
 async function handleCheckIn() {
-  applyResult(await checkIn());
+  applyResult(await checkIn(appState.currentUserId));
 }
 
 async function handleCheckOut() {
-  applyResult(await checkOut());
+  applyResult(await checkOut(appState.currentUserId));
 }
 
 async function handleEditSave() {
@@ -108,7 +175,9 @@ async function handleEditSave() {
     return;
   }
 
-  applyResult(await updateEntryTimes(entryId, checkInIso, checkOutIso));
+  applyResult(
+    await updateEntryTimes(entryId, checkInIso, checkOutIso, appState.currentUserId)
+  );
   closeEditSheet();
 }
 
@@ -190,6 +259,97 @@ function handleOverviewRangeClick(event) {
   render();
 }
 
+async function handleUserChange(event) {
+  const userId = event.target.value;
+  if (!userId) {
+    return;
+  }
+
+  appState = {
+    ...appState,
+    currentUserId: userId,
+    message: READY_MESSAGE,
+  };
+  await refreshEntriesForCurrentUser();
+}
+
+async function handleAddUser() {
+  let result;
+
+  if (isSupabasePersistenceEnabled()) {
+    const email = viewRefs.authEmailInput.value;
+    const password = viewRefs.authPasswordInput.value;
+    const name = viewRefs.authNameInput.value;
+
+    result = await addUser({
+      email,
+      password,
+      name,
+    });
+  } else {
+    const name = window.prompt("Enter new user name:");
+    if (name === null) {
+      return;
+    }
+
+    result = await addUser(name);
+  }
+
+  appState = {
+    ...appState,
+    users: result.users,
+    currentUserId: result.newUserId || appState.currentUserId,
+    isAuthenticated: appState.isAuthenticated || Boolean(result.newUserId),
+    message: result.message,
+  };
+
+  if (isSupabasePersistenceEnabled() && result.newUserId) {
+    viewRefs.authPasswordInput.value = "";
+  }
+
+  await refreshEntriesForCurrentUser();
+}
+
+async function handleAuthAction() {
+  if (!isSupabasePersistenceEnabled()) {
+    return;
+  }
+
+  if (appState.isAuthenticated) {
+    const result = await signOutUser();
+    const fallbackUserId = result.users[0]?.id || "default";
+
+    appState = {
+      ...appState,
+      users: result.users,
+      currentUserId: fallbackUserId,
+      isAuthenticated: false,
+      message: result.message,
+    };
+
+    await refreshEntriesForCurrentUser();
+    return;
+  }
+
+  const email = viewRefs.authEmailInput.value;
+  const password = viewRefs.authPasswordInput.value;
+
+  const result = await signInUser({ email, password });
+  appState = {
+    ...appState,
+    users: result.users,
+    currentUserId: result.currentUserId || appState.currentUserId,
+    isAuthenticated: Boolean(result.currentUserId),
+    message: result.message,
+  };
+
+  if (result.currentUserId) {
+    viewRefs.authPasswordInput.value = "";
+  }
+
+  await refreshEntriesForCurrentUser();
+}
+
 viewRefs.checkInButton.addEventListener("click", handleCheckIn);
 viewRefs.checkOutButton.addEventListener("click", handleCheckOut);
 viewRefs.historyBody.addEventListener("click", handleHistoryActionClick);
@@ -201,6 +361,9 @@ viewRefs.dayOverviewTodayButton.addEventListener("click", handleOverviewTodayCli
 viewRefs.dayOverviewHistoricButton.addEventListener("click", handleOverviewHistoricClick);
 viewRefs.dayOverviewHistoricDate.addEventListener("change", handleOverviewHistoricDateChange);
 viewRefs.dayOverviewRangeGroup.addEventListener("click", handleOverviewRangeClick);
+viewRefs.userSelect.addEventListener("change", handleUserChange);
+viewRefs.addUserButton.addEventListener("click", handleAddUser);
+viewRefs.authActionButton.addEventListener("click", handleAuthAction);
 document.addEventListener("keydown", handleSheetKeydown);
 
 initialize();
