@@ -6,18 +6,11 @@ import {
   getInitialState,
   updateEntryTimes,
 } from "./services/timeEntryService.js";
-import {
-  addUser,
-  getUsersState,
-  restoreSignedInUser,
-  signInUser,
-  signOutUser,
-} from "./services/userService.js";
+import { addUser, getUsersState } from "./services/userService.js";
 import {
   localDateTimeInputToIso,
   toLocalDateTimeInputValue,
 } from "./shared/dateTime.js";
-import { isSupabasePersistenceEnabled } from "./config/appConfig.js";
 
 const READY_MESSAGE = "Ready.";
 
@@ -34,7 +27,6 @@ const viewRefs = buildMainView(rootElement);
 let appState = {
   users: [],
   currentUserId: "default",
-  isAuthenticated: false,
   entries: [],
   activeEntry: null,
   message: READY_MESSAGE,
@@ -52,32 +44,8 @@ function renderUserSelect() {
     .join("");
 }
 
-function renderAuthButton() {
-  if (!isSupabasePersistenceEnabled()) {
-    viewRefs.addUserButton.textContent = "Add user";
-    viewRefs.authFields.hidden = true;
-    viewRefs.authEmailInput.hidden = true;
-    viewRefs.authPasswordInput.hidden = true;
-    viewRefs.authNameInput.hidden = true;
-    viewRefs.authActionButton.hidden = true;
-    return;
-  }
-
-  viewRefs.addUserButton.textContent = "Sign up";
-  viewRefs.authFields.hidden = false;
-  viewRefs.authEmailInput.hidden = false;
-  viewRefs.authPasswordInput.hidden = false;
-  viewRefs.authNameInput.hidden = appState.isAuthenticated;
-  viewRefs.authActionButton.hidden = false;
-  viewRefs.authActionButton.textContent = appState.isAuthenticated ? "Sign out" : "Sign in";
-  viewRefs.authEmailInput.disabled = appState.isAuthenticated;
-  viewRefs.authPasswordInput.disabled = appState.isAuthenticated;
-  viewRefs.authNameInput.disabled = appState.isAuthenticated;
-}
-
 function render() {
   renderUserSelect();
-  renderAuthButton();
   renderTrackerState(viewRefs, appState);
 }
 
@@ -124,19 +92,16 @@ async function refreshEntriesForCurrentUser() {
 async function initialize() {
   try {
     const usersState = await getUsersState();
-    const restoredAuth = await restoreSignedInUser();
-    const users = restoredAuth.users?.length ? restoredAuth.users : usersState.users;
-    const currentUserId = restoredAuth.currentUserId || users[0]?.id || "default";
+    const currentUserId = usersState.users[0]?.id || "default";
     const initialState = await getInitialState(currentUserId);
     const todayDateISO = toLocalDateInputValue();
 
     appState = {
-      users,
+      users: usersState.users,
       currentUserId,
-      isAuthenticated: restoredAuth.isAuthenticated,
       entries: initialState.entries,
       activeEntry: initialState.activeEntry,
-      message: restoredAuth.message || READY_MESSAGE,
+      message: READY_MESSAGE,
       dayOverviewMode: "today",
       dayOverviewDateISO: todayDateISO,
       dayOverviewHistoricRange: "week",
@@ -144,11 +109,6 @@ async function initialize() {
 
     viewRefs.dayOverviewHistoricDate.value = todayDateISO;
     viewRefs.dayOverviewHistoricDate.max = todayDateISO;
-    if (isSupabasePersistenceEnabled()) {
-      viewRefs.authEmailInput.value = "";
-      viewRefs.authPasswordInput.value = "";
-      viewRefs.authNameInput.value = "";
-    }
 
     render();
   } catch (error) {
@@ -282,92 +242,25 @@ async function handleUserChange(event) {
 
 async function handleAddUser() {
   try {
-    let result;
-
-    if (isSupabasePersistenceEnabled()) {
-      const email = viewRefs.authEmailInput.value;
-      const password = viewRefs.authPasswordInput.value;
-      const name = viewRefs.authNameInput.value;
-
-      result = await addUser({
-        email,
-        password,
-        name,
-      });
-    } else {
-      const name = window.prompt("Enter new user name:");
-      if (name === null) {
-        return;
-      }
-
-      result = await addUser(name);
+    const name = window.prompt("Enter new user name:");
+    if (name === null) {
+      return;
     }
+
+    const result = await addUser(name);
 
     appState = {
       ...appState,
       users: result.users,
       currentUserId: result.newUserId || appState.currentUserId,
-      isAuthenticated: appState.isAuthenticated || Boolean(result.newUserId),
       message: result.message,
     };
-
-    if (isSupabasePersistenceEnabled() && result.newUserId) {
-      viewRefs.authPasswordInput.value = "";
-    }
 
     await refreshEntriesForCurrentUser();
   } catch (error) {
     appState = {
       ...appState,
-      message: `Sign up failed: ${error.message}`,
-    };
-    render();
-  }
-}
-
-async function handleAuthAction() {
-  if (!isSupabasePersistenceEnabled()) {
-    return;
-  }
-
-  try {
-    if (appState.isAuthenticated) {
-      const result = await signOutUser();
-      const fallbackUserId = result.users[0]?.id || "default";
-
-      appState = {
-        ...appState,
-        users: result.users,
-        currentUserId: fallbackUserId,
-        isAuthenticated: false,
-        message: result.message,
-      };
-
-      await refreshEntriesForCurrentUser();
-      return;
-    }
-
-    const email = viewRefs.authEmailInput.value;
-    const password = viewRefs.authPasswordInput.value;
-
-    const result = await signInUser({ email, password });
-    appState = {
-      ...appState,
-      users: result.users,
-      currentUserId: result.currentUserId || appState.currentUserId,
-      isAuthenticated: Boolean(result.currentUserId),
-      message: result.message,
-    };
-
-    if (result.currentUserId) {
-      viewRefs.authPasswordInput.value = "";
-    }
-
-    await refreshEntriesForCurrentUser();
-  } catch (error) {
-    appState = {
-      ...appState,
-      message: `Sign in failed: ${error.message}`,
+      message: `Add user failed: ${error.message}`,
     };
     render();
   }
@@ -386,7 +279,6 @@ viewRefs.dayOverviewHistoricDate.addEventListener("change", handleOverviewHistor
 viewRefs.dayOverviewRangeGroup.addEventListener("click", handleOverviewRangeClick);
 viewRefs.userSelect.addEventListener("change", handleUserChange);
 viewRefs.addUserButton.addEventListener("click", handleAddUser);
-viewRefs.authActionButton.addEventListener("click", handleAuthAction);
 document.addEventListener("keydown", handleSheetKeydown);
 
 initialize();

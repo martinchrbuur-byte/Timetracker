@@ -107,18 +107,6 @@ p {
   padding-right: 0.85rem;
 }
 
-.user-toolbar__auth {
-  margin-top: 0.5rem;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.45rem;
-}
-
-.user-auth-input {
-  min-height: 42px;
-  font-size: 0.92rem;
-}
-
 /* Status chip stays textual-first for clarity and accessibility. */
 .status-label {
   display: inline-flex;

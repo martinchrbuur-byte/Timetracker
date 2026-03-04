@@ -1,11 +1,6 @@
 const VIEW_SELECTORS = {
   userSelect: "#user-select",
   addUserButton: "#add-user-btn",
-  authActionButton: "#auth-action-btn",
-  authFields: "#user-toolbar-auth",
-  authEmailInput: "#auth-email",
-  authPasswordInput: "#auth-password",
-  authNameInput: "#auth-name",
   statusLabel: "#status-label",
   statusMeta: "#status-meta",
   editActiveButton: "#edit-active-btn",
@@ -54,12 +49,6 @@ export function buildMainView(rootElement) {
         <div class="user-toolbar__actions">
           <select id="user-select" class="user-select" aria-label="Select user"></select>
           <button id="add-user-btn" class="btn btn-secondary user-add-btn" type="button">Add user</button>
-          <button id="auth-action-btn" class="btn btn-secondary user-add-btn" type="button">Sign in</button>
-        </div>
-        <div class="user-toolbar__auth" id="user-toolbar-auth">
-          <input id="auth-email" class="field-input user-auth-input" type="email" autocomplete="email" placeholder="Email" />
-          <input id="auth-password" class="field-input user-auth-input" type="password" autocomplete="current-password" placeholder="Password" />
-          <input id="auth-name" class="field-input user-auth-input" type="text" autocomplete="name" placeholder="Display name (for sign up)" />
         </div>
       </div>
     </section>

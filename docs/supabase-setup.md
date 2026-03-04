@@ -123,41 +123,9 @@ Template is available at [public/app-config.example.js](public/app-config.exampl
 2. Refresh browser and confirm records remain.
 3. Confirm rows appear in `public.time_entries`.
 
-## 5) Enable Auth Sign Up (new)
-
-The app now supports Supabase email/password sign-up from the UI when `provider` is set to `supabase`.
-
-1. In Supabase Dashboard, open **Authentication → Providers → Email**.
-2. Enable Email provider.
-3. Choose whether email confirmation is required.
-4. In the app, click **Sign up** and provide email/password.
-
-What happens on sign-up:
-- A Supabase Auth user is created via `POST /auth/v1/signup`.
-- The app stores a tracker profile in `public.tracker_users` with:
-  - `id = auth user id`
-  - `name = display name (or email fallback)`
-  - `created_at = current timestamp`
-
-If confirmation emails are enabled, account creation can still succeed but session login may wait for verification.
-
-## 6) Sign In / Sign Out / Session Restore
-
-When Supabase mode is enabled, the toolbar shows:
-- Email + Password fields
-- Optional Display name field (used by `Sign up`)
-- `Sign up` (creates account)
-- `Sign in` / `Sign out` (toggles by auth state)
-
-Session behavior:
-- On successful sign in, auth session is persisted in browser storage.
-- On app reload, the app calls `GET /auth/v1/user` with the stored token and restores signed-in state.
-- On sign out, the app calls `POST /auth/v1/logout` and clears stored auth session.
-
-If a restored token is invalid or expired, the app clears it and starts in signed-out mode.
-
 ## Notes
 
 - If `provider` is `local`, app uses browser localStorage.
 - If `provider` is `supabase` and credentials are present, app uses Supabase REST API.
+- Current app version does not include sign-in/sign-up authentication UI.
 - Current implementation upserts all known entries by `id` and never deletes rows.
