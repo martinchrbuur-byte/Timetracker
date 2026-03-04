@@ -6,7 +6,6 @@ import {
   getInitialState,
   updateEntryTimes,
 } from "./services/timeEntryService.js";
-import { getUsersState } from "./services/userService.js";
 import {
   localDateTimeInputToIso,
   toLocalDateTimeInputValue,
@@ -25,7 +24,6 @@ const rootElement = document.getElementById("app");
 const viewRefs = buildMainView(rootElement);
 
 let appState = {
-  users: [],
   currentUserId: "default",
   entries: [],
   activeEntry: null,
@@ -35,17 +33,7 @@ let appState = {
   dayOverviewHistoricRange: "week",
 };
 
-function renderUserSelect() {
-  viewRefs.userSelect.innerHTML = appState.users
-    .map(
-      (user) =>
-        `<option value="${user.id}" ${user.id === appState.currentUserId ? "selected" : ""}>${user.name}</option>`
-    )
-    .join("");
-}
-
 function render() {
-  renderUserSelect();
   renderTrackerState(viewRefs, appState);
 }
 
@@ -91,14 +79,11 @@ async function refreshEntriesForCurrentUser() {
 
 async function initialize() {
   try {
-    const usersState = await getUsersState();
-    const currentUserId = usersState.users[0]?.id || "default";
-    const initialState = await getInitialState(currentUserId);
+    const initialState = await getInitialState("default");
     const todayDateISO = toLocalDateInputValue();
 
     appState = {
-      users: usersState.users,
-      currentUserId,
+      currentUserId: "default",
       entries: initialState.entries,
       activeEntry: initialState.activeEntry,
       message: READY_MESSAGE,
@@ -226,20 +211,6 @@ function handleOverviewRangeClick(event) {
   render();
 }
 
-async function handleUserChange(event) {
-  const userId = event.target.value;
-  if (!userId) {
-    return;
-  }
-
-  appState = {
-    ...appState,
-    currentUserId: userId,
-    message: READY_MESSAGE,
-  };
-  await refreshEntriesForCurrentUser();
-}
-
 viewRefs.checkInButton.addEventListener("click", handleCheckIn);
 viewRefs.checkOutButton.addEventListener("click", handleCheckOut);
 viewRefs.historyBody.addEventListener("click", handleHistoryActionClick);
@@ -251,7 +222,6 @@ viewRefs.dayOverviewTodayButton.addEventListener("click", handleOverviewTodayCli
 viewRefs.dayOverviewHistoricButton.addEventListener("click", handleOverviewHistoricClick);
 viewRefs.dayOverviewHistoricDate.addEventListener("change", handleOverviewHistoricDateChange);
 viewRefs.dayOverviewRangeGroup.addEventListener("click", handleOverviewRangeClick);
-viewRefs.userSelect.addEventListener("change", handleUserChange);
 document.addEventListener("keydown", handleSheetKeydown);
 
 initialize();

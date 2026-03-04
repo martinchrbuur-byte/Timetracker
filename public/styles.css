@@ -361,8 +361,7 @@ p {
 .btn:focus-visible,
 .field-input:focus-visible,
 .overview-tab:focus-visible,
-.day-overview__date-input:focus-visible,
-.user-select:focus-visible {
+.day-overview__date-input:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }

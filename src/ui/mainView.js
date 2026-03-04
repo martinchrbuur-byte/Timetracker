@@ -1,5 +1,4 @@
 const VIEW_SELECTORS = {
-  userSelect: "#user-select",
   statusLabel: "#status-label",
   statusMeta: "#status-meta",
   editActiveButton: "#edit-active-btn",
@@ -43,12 +42,6 @@ export function buildMainView(rootElement) {
     <section class="panel" aria-labelledby="app-title">
       <h1 id="app-title">Work Hours Tracker</h1>
       <p class="subtitle">Track check-in/check-out timestamps locally in your browser.</p>
-      <div class="user-toolbar">
-        <label class="user-toolbar__label" for="user-select">User</label>
-        <div class="user-toolbar__actions">
-          <select id="user-select" class="user-select" aria-label="Select user"></select>
-        </div>
-      </div>
     </section>
 
     <section class="panel" aria-labelledby="status-title">
