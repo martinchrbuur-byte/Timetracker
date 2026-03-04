@@ -6,7 +6,7 @@ import {
   getInitialState,
   updateEntryTimes,
 } from "./services/timeEntryService.js";
-import { addUser, getUsersState } from "./services/userService.js";
+import { getUsersState } from "./services/userService.js";
 import {
   localDateTimeInputToIso,
   toLocalDateTimeInputValue,
@@ -240,32 +240,6 @@ async function handleUserChange(event) {
   await refreshEntriesForCurrentUser();
 }
 
-async function handleAddUser() {
-  try {
-    const name = window.prompt("Enter new user name:");
-    if (name === null) {
-      return;
-    }
-
-    const result = await addUser(name);
-
-    appState = {
-      ...appState,
-      users: result.users,
-      currentUserId: result.newUserId || appState.currentUserId,
-      message: result.message,
-    };
-
-    await refreshEntriesForCurrentUser();
-  } catch (error) {
-    appState = {
-      ...appState,
-      message: `Add user failed: ${error.message}`,
-    };
-    render();
-  }
-}
-
 viewRefs.checkInButton.addEventListener("click", handleCheckIn);
 viewRefs.checkOutButton.addEventListener("click", handleCheckOut);
 viewRefs.historyBody.addEventListener("click", handleHistoryActionClick);
@@ -278,7 +252,6 @@ viewRefs.dayOverviewHistoricButton.addEventListener("click", handleOverviewHisto
 viewRefs.dayOverviewHistoricDate.addEventListener("change", handleOverviewHistoricDateChange);
 viewRefs.dayOverviewRangeGroup.addEventListener("click", handleOverviewRangeClick);
 viewRefs.userSelect.addEventListener("change", handleUserChange);
-viewRefs.addUserButton.addEventListener("click", handleAddUser);
 document.addEventListener("keydown", handleSheetKeydown);
 
 initialize();

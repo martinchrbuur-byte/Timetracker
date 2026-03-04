@@ -127,5 +127,6 @@ Template is available at [public/app-config.example.js](public/app-config.exampl
 
 - If `provider` is `local`, app uses browser localStorage.
 - If `provider` is `supabase` and credentials are present, app uses Supabase REST API.
+- User creation from the app UI is disabled; user profiles are read from storage only.
 - Current app version does not include sign-in/sign-up authentication UI.
 - Current implementation upserts all known entries by `id` and never deletes rows.

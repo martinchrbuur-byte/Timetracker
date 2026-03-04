@@ -1,6 +1,5 @@
 const VIEW_SELECTORS = {
   userSelect: "#user-select",
-  addUserButton: "#add-user-btn",
   statusLabel: "#status-label",
   statusMeta: "#status-meta",
   editActiveButton: "#edit-active-btn",
@@ -48,7 +47,6 @@ export function buildMainView(rootElement) {
         <label class="user-toolbar__label" for="user-select">User</label>
         <div class="user-toolbar__actions">
           <select id="user-select" class="user-select" aria-label="Select user"></select>
-          <button id="add-user-btn" class="btn btn-secondary user-add-btn" type="button">Add user</button>
         </div>
       </div>
     </section>
