@@ -5,58 +5,130 @@ import {
   checkOut,
   getInitialState,
   getViewState,
+  updateEntryTimes,
 } from "./services/timeEntryService.js";
+import {
+  localDateTimeInputToIso,
+  toLocalDateTimeInputValue,
+} from "./shared/dateTime.js";
 
-// Bootstrap root view and cache element references.
+const READY_MESSAGE = "Ready.";
+
+// App controller owns event wiring and delegates all business rules to services.
 const rootElement = document.getElementById("app");
 const viewRefs = buildMainView(rootElement);
 
 let appState = {
   entries: [],
   activeEntry: null,
-  message: "Ready.",
+  message: READY_MESSAGE,
 };
 
-// Render always derives active status from the latest entries state.
 function render() {
-  const stateForView = getViewState(appState.entries, appState.message);
-  renderTrackerState(viewRefs, stateForView);
+  renderTrackerState(viewRefs, getViewState(appState.entries, appState.message));
 }
 
-// Initial load reads persisted entries from localStorage.
+function applyResult(result) {
+  appState = {
+    entries: result.entries,
+    activeEntry: result.activeEntry,
+    message: result.message,
+  };
+  render();
+}
+
+function openEditSheet(entryId) {
+  const entry = appState.entries.find((entryItem) => entryItem.id === entryId);
+  if (!entry) {
+    return;
+  }
+
+  viewRefs.editEntryIdInput.value = entry.id;
+  viewRefs.editCheckInInput.value = toLocalDateTimeInputValue(entry.checkInAt);
+  viewRefs.editCheckOutInput.value = toLocalDateTimeInputValue(entry.checkOutAt);
+  viewRefs.editSheet.hidden = false;
+  viewRefs.editCheckInInput.focus();
+}
+
+function closeEditSheet() {
+  viewRefs.editSheet.hidden = true;
+  viewRefs.editEntryIdInput.value = "";
+  viewRefs.editCheckInInput.value = "";
+  viewRefs.editCheckOutInput.value = "";
+}
+
 function initialize() {
   const initialState = getInitialState();
   appState = {
     entries: initialState.entries,
     activeEntry: initialState.activeEntry,
-    message: "Ready.",
+    message: READY_MESSAGE,
   };
   render();
 }
 
-// Check-in action handler delegates business rules to the service layer.
 function handleCheckIn() {
-  const result = checkIn();
-  appState = {
-    entries: result.entries,
-    activeEntry: result.activeEntry,
-    message: result.message,
-  };
-  render();
+  applyResult(checkIn());
 }
 
-// Check-out action handler delegates business rules to the service layer.
 function handleCheckOut() {
-  const result = checkOut();
-  appState = {
-    entries: result.entries,
-    activeEntry: result.activeEntry,
-    message: result.message,
-  };
-  render();
+  applyResult(checkOut());
+}
+
+function handleEditSave() {
+  const entryId = viewRefs.editEntryIdInput.value;
+  const checkInIso = localDateTimeInputToIso(viewRefs.editCheckInInput.value);
+  const checkOutIso = localDateTimeInputToIso(viewRefs.editCheckOutInput.value);
+
+  if (!checkInIso) {
+    appState = {
+      ...appState,
+      message: "Check-in is required and must be valid.",
+    };
+    render();
+    return;
+  }
+
+  applyResult(updateEntryTimes(entryId, checkInIso, checkOutIso));
+  closeEditSheet();
+}
+
+function handleHistoryActionClick(event) {
+  const editButton = event.target.closest("[data-entry-id]");
+  if (!editButton) {
+    return;
+  }
+
+  const entryId = editButton.dataset.entryId;
+  if (!entryId) {
+    return;
+  }
+
+  openEditSheet(entryId);
+}
+
+function handleActiveEditClick() {
+  const entryId = viewRefs.editActiveButton.dataset.entryId;
+  if (!entryId) {
+    return;
+  }
+
+  openEditSheet(entryId);
+}
+
+function handleSheetKeydown(event) {
+  if (event.key === "Escape" && !viewRefs.editSheet.hidden) {
+    closeEditSheet();
+  }
 }
 
 viewRefs.checkInButton.addEventListener("click", handleCheckIn);
 viewRefs.checkOutButton.addEventListener("click", handleCheckOut);
+viewRefs.historyBody.addEventListener("click", handleHistoryActionClick);
+viewRefs.editActiveButton.addEventListener("click", handleActiveEditClick);
+viewRefs.editCancelButton.addEventListener("click", closeEditSheet);
+viewRefs.editSheetBackdrop.addEventListener("click", closeEditSheet);
+viewRefs.editSaveButton.addEventListener("click", handleEditSave);
+document.addEventListener("keydown", handleSheetKeydown);
 
 initialize();

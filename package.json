@@ -1,0 +1,9 @@
+{
+  "name": "tr2-work-hours-tracker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "test:regression": "node --test tests/regression/**/*.test.mjs"
+  }
+}

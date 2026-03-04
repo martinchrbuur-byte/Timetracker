@@ -78,6 +78,10 @@ p {
   color: var(--text-secondary);
 }
 
+#edit-active-btn {
+  margin-top: 0.75rem;
+}
+
 .message {
   margin-top: 0.75rem;
   min-height: 1.5rem;
@@ -124,6 +128,10 @@ p {
   outline-offset: 2px;
 }
 
+.btn-inline-edit {
+  width: 100%;
+}
+
 .table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -150,6 +158,58 @@ tbody tr:last-child td {
   border-bottom: none;
 }
 
+.edit-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.edit-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.edit-sheet-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--surface);
+  border-radius: 14px 14px 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  padding: 1rem;
+}
+
+.field-label {
+  display: block;
+  margin-top: 0.75rem;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+
+.field-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.field-help {
+  margin-top: 0.65rem;
+  color: var(--text-secondary);
+}
+
+.sheet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 @media (max-width: 600px) {
   .app-shell {
     padding: 0.7rem;
@@ -157,5 +217,27 @@ tbody tr:last-child td {
 
   h1 {
     font-size: 1.4rem;
+  }
+
+  .panel {
+    padding: 0.85rem;
+  }
+
+  th,
+  td {
+    padding: 0.65rem 0.45rem;
+  }
+}
+
+@media (min-width: 601px) {
+  .edit-sheet-panel {
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    top: 50%;
+    width: min(560px, calc(100% - 2rem));
+    transform: translate(-50%, -50%);
+    border-radius: 12px;
+    border-bottom: 1px solid var(--border);
   }
 }

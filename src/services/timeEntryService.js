@@ -3,34 +3,106 @@ import {
   loadEntriesFromStorage,
   saveEntriesToStorage,
 } from "./storageService.js";
+import { isValidDateTimeString, toTimestamp } from "../shared/dateTime.js";
 
-// Most recent sessions appear first in the UI.
-function sortByLatest(entries) {
+const MESSAGES = {
+  READY: "Ready.",
+  CHECKED_IN: "Checked in successfully.",
+  CHECKED_OUT: "Checked out successfully.",
+  CHECK_IN_BLOCKED: "Cannot check in: an active session already exists.",
+  CHECK_OUT_BLOCKED: "Cannot check out: no active session.",
+  CHECK_IN_ERROR: "Check-in failed due to a storage error.",
+  CHECK_OUT_ERROR: "Check-out failed due to a storage error.",
+  UPDATE_SUCCESS: "Session times updated successfully.",
+  UPDATE_ERROR: "Update failed due to a storage error.",
+  UPDATE_NOT_FOUND: "Cannot edit: session not found.",
+  INVALID_CHECK_IN: "Invalid check-in date/time.",
+  INVALID_CHECK_OUT: "Invalid check-out date/time.",
+  CHECK_OUT_EARLY: "Check-out cannot be earlier than check-in.",
+  ACTIVE_CONFLICT: "Cannot set active session: another active session already exists.",
+  OVERLAP_CONFLICT: "Cannot save: session overlaps another entry.",
+};
+
+function sortEntriesByLatestCheckIn(entries) {
   return [...entries].sort(
-    (left, right) =>
-      new Date(right.checkInAt).getTime() - new Date(left.checkInAt).getTime()
+    (leftEntry, rightEntry) => toTimestamp(rightEntry.checkInAt) - toTimestamp(leftEntry.checkInAt)
   );
 }
 
-// V1 supports at most one active session at a time.
 function findActiveEntry(entries) {
   return entries.find((entry) => entry.checkOutAt === null) || null;
 }
 
-// Shared helper to persist and return consistent result payloads.
-function persistAndBuildResult(entries, message) {
-  const sorted = sortByLatest(entries);
-  saveEntriesToStorage(sorted);
+function getEndTimestamp(checkOutAt) {
+  return checkOutAt === null ? Number.POSITIVE_INFINITY : toTimestamp(checkOutAt);
+}
+
+function readEntries() {
+  return sortEntriesByLatestCheckIn(loadEntriesFromStorage());
+}
+
+function buildResult(entries, message, shouldPersist = false) {
+  const sortedEntries = sortEntriesByLatestCheckIn(entries);
+
+  if (shouldPersist) {
+    saveEntriesToStorage(sortedEntries);
+  }
 
   return {
-    entries: sorted,
-    activeEntry: findActiveEntry(sorted),
+    entries: sortedEntries,
+    activeEntry: findActiveEntry(sortedEntries),
     message,
   };
 }
 
+function intervalsOverlap(leftStart, leftEnd, rightStart, rightEnd) {
+  return leftStart < rightEnd && rightStart < leftEnd;
+}
+
+function validateEditTimes(entries, targetEntryId, nextCheckInAt, nextCheckOutAt) {
+  if (!isValidDateTimeString(nextCheckInAt)) {
+    return MESSAGES.INVALID_CHECK_IN;
+  }
+
+  if (nextCheckOutAt !== null && !isValidDateTimeString(nextCheckOutAt)) {
+    return MESSAGES.INVALID_CHECK_OUT;
+  }
+
+  const nextStart = toTimestamp(nextCheckInAt);
+  const nextEnd = getEndTimestamp(nextCheckOutAt);
+
+  if (nextEnd !== Number.POSITIVE_INFINITY && nextEnd < nextStart) {
+    return MESSAGES.CHECK_OUT_EARLY;
+  }
+
+  const hasOtherActiveEntry = entries.some(
+    (entry) => entry.id !== targetEntryId && entry.checkOutAt === null
+  );
+
+  if (nextCheckOutAt === null && hasOtherActiveEntry) {
+    return MESSAGES.ACTIVE_CONFLICT;
+  }
+
+  const overlapsAnotherEntry = entries.some((entry) => {
+    if (entry.id === targetEntryId) {
+      return false;
+    }
+
+    const otherStart = toTimestamp(entry.checkInAt);
+    const otherEnd = getEndTimestamp(entry.checkOutAt);
+
+    return intervalsOverlap(nextStart, nextEnd, otherStart, otherEnd);
+  });
+
+  if (overlapsAnotherEntry) {
+    return MESSAGES.OVERLAP_CONFLICT;
+  }
+
+  return null;
+}
+
 export function getInitialState() {
-  const entries = sortByLatest(loadEntriesFromStorage());
+  const entries = readEntries();
   return {
     entries,
     activeEntry: findActiveEntry(entries),
@@ -38,70 +110,81 @@ export function getInitialState() {
 }
 
 export function getViewState(entries, message) {
-  const sorted = sortByLatest(entries);
-  return {
-    entries: sorted,
-    activeEntry: findActiveEntry(sorted),
-    message,
-  };
+  return buildResult(entries, message || MESSAGES.READY);
 }
 
 export function checkIn() {
   try {
-    // Read latest data and enforce no-overlap rule.
-    const entries = sortByLatest(loadEntriesFromStorage());
+    const entries = readEntries();
     const activeEntry = findActiveEntry(entries);
 
     if (activeEntry) {
-      return {
-        entries,
-        activeEntry,
-        message: "Cannot check in: an active session already exists.",
-      };
+      return buildResult(entries, MESSAGES.CHECK_IN_BLOCKED);
     }
 
     const newEntry = createTimeEntry();
-    return persistAndBuildResult([newEntry, ...entries], "Checked in successfully.");
+    return buildResult([newEntry, ...entries], MESSAGES.CHECKED_IN, true);
   } catch (error) {
-    return {
-      entries: sortByLatest(loadEntriesFromStorage()),
-      activeEntry: findActiveEntry(loadEntriesFromStorage()),
-      message: "Check-in failed due to a storage error.",
-    };
+    return buildResult(readEntries(), MESSAGES.CHECK_IN_ERROR);
   }
 }
 
 export function checkOut() {
   try {
-    // Read latest data and require an active session to close.
-    const entries = sortByLatest(loadEntriesFromStorage());
+    const entries = readEntries();
     const activeEntry = findActiveEntry(entries);
 
     if (!activeEntry) {
-      return {
-        entries,
-        activeEntry: null,
-        message: "Cannot check out: no active session.",
-      };
+      return buildResult(entries, MESSAGES.CHECK_OUT_BLOCKED);
     }
 
-    const updatedEntries = entries.map((entry) => {
-      if (entry.id !== activeEntry.id) {
-        return entry;
-      }
+    const updatedEntries = entries.map((entry) =>
+      entry.id === activeEntry.id
+        ? {
+            ...entry,
+            checkOutAt: new Date().toISOString(),
+          }
+        : entry
+    );
 
-      return {
-        ...entry,
-        checkOutAt: new Date().toISOString(),
-      };
-    });
-
-    return persistAndBuildResult(updatedEntries, "Checked out successfully.");
+    return buildResult(updatedEntries, MESSAGES.CHECKED_OUT, true);
   } catch (error) {
-    return {
-      entries: sortByLatest(loadEntriesFromStorage()),
-      activeEntry: findActiveEntry(loadEntriesFromStorage()),
-      message: "Check-out failed due to a storage error.",
-    };
+    return buildResult(readEntries(), MESSAGES.CHECK_OUT_ERROR);
+  }
+}
+
+export function updateEntryTimes(entryId, nextCheckInAt, nextCheckOutAt) {
+  try {
+    const entries = readEntries();
+    const targetEntry = entries.find((entry) => entry.id === entryId);
+
+    if (!targetEntry) {
+      return buildResult(entries, MESSAGES.UPDATE_NOT_FOUND);
+    }
+
+    const validationMessage = validateEditTimes(
+      entries,
+      entryId,
+      nextCheckInAt,
+      nextCheckOutAt
+    );
+
+    if (validationMessage) {
+      return buildResult(entries, validationMessage);
+    }
+
+    const updatedEntries = entries.map((entry) =>
+      entry.id === entryId
+        ? {
+            ...entry,
+            checkInAt: nextCheckInAt,
+            checkOutAt: nextCheckOutAt,
+          }
+        : entry
+    );
+
+    return buildResult(updatedEntries, MESSAGES.UPDATE_SUCCESS, true);
+  } catch (error) {
+    return buildResult(readEntries(), MESSAGES.UPDATE_ERROR);
   }
 }

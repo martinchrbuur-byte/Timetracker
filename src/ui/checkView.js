@@ -1,64 +1,42 @@
-function formatDateTime(value) {
-  if (!value) {
-    return "--";
-  }
-  const date = new Date(value);
-  return date.toLocaleString();
+import {
+  formatDateOnly,
+  formatDateTime,
+  formatDuration,
+} from "../shared/dateTime.js";
+
+function buildHistoryRow(entry) {
+  return `
+      <tr>
+        <td>${formatDateOnly(entry.checkInAt)}</td>
+        <td>${formatDateTime(entry.checkInAt)}</td>
+        <td>${formatDateTime(entry.checkOutAt)}</td>
+        <td>${formatDuration(entry.checkInAt, entry.checkOutAt)}</td>
+        <td>
+          <button
+            class="btn btn-secondary btn-inline-edit"
+            type="button"
+            data-entry-id="${entry.id}"
+          >
+            Edit time
+          </button>
+        </td>
+      </tr>
+    `;
 }
 
-// Formats a date-only cell for quick scanning in history.
-function formatDateOnly(value) {
-  if (!value) {
-    return "--";
-  }
-  const date = new Date(value);
-  return date.toLocaleDateString();
-}
-
-// Computes duration for completed sessions.
-function getDurationLabel(checkInAt, checkOutAt) {
-  if (!checkInAt || !checkOutAt) {
-    return "In progress";
-  }
-
-  const diffMs = new Date(checkOutAt).getTime() - new Date(checkInAt).getTime();
-  if (Number.isNaN(diffMs) || diffMs < 0) {
-    return "--";
-  }
-
-  const totalMinutes = Math.floor(diffMs / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  return `${hours}h ${minutes}m`;
-}
-
-// Renders history rows in descending check-in order.
 function renderHistory(historyBody, entries) {
   if (entries.length === 0) {
     historyBody.innerHTML = `
       <tr>
-        <td colspan="4">No sessions yet.</td>
+        <td colspan="5">No sessions yet.</td>
       </tr>
     `;
     return;
   }
 
-  historyBody.innerHTML = entries
-    .map(
-      (entry) => `
-      <tr>
-        <td>${formatDateOnly(entry.checkInAt)}</td>
-        <td>${formatDateTime(entry.checkInAt)}</td>
-        <td>${formatDateTime(entry.checkOutAt)}</td>
-        <td>${getDurationLabel(entry.checkInAt, entry.checkOutAt)}</td>
-      </tr>
-    `
-    )
-    .join("");
+  historyBody.innerHTML = entries.map(buildHistoryRow).join("");
 }
 
-// Updates all dynamic UI parts from a single state object.
 export function renderTrackerState(refs, state) {
   const isActive = Boolean(state.activeEntry);
 
@@ -69,6 +47,9 @@ export function renderTrackerState(refs, state) {
   refs.statusMeta.textContent = isActive
     ? `Started at: ${formatDateTime(state.activeEntry.checkInAt)}`
     : "No active session.";
+
+  refs.editActiveButton.disabled = !isActive;
+  refs.editActiveButton.dataset.entryId = isActive ? state.activeEntry.id : "";
 
   refs.message.textContent = state.message;
 
