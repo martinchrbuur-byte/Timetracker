@@ -1,4 +1,8 @@
-import { createUserProfile, normalizeUserProfiles } from "../models/userProfile.js";
+import {
+  createUserProfile,
+  DEFAULT_USER,
+  normalizeUserProfiles,
+} from "../models/userProfile.js";
 import { loadUsersFromStorage, saveUsersToStorage } from "./storageService.js";
 import { isSupabasePersistenceEnabled } from "../config/appConfig.js";
 import {
@@ -18,6 +22,14 @@ function sanitizeEmail(email) {
 
 function sanitizePassword(password) {
   return typeof password === "string" ? password : "";
+}
+
+async function loadUsersSafe() {
+  try {
+    return normalizeUserProfiles(await loadUsersFromStorage());
+  } catch (error) {
+    return normalizeUserProfiles([DEFAULT_USER]);
+  }
 }
 
 function normalizeAddUserInput(input) {
@@ -45,7 +57,7 @@ function normalizeAddUserInput(input) {
 }
 
 async function ensureUserProfileExists(user, preferredName = "") {
-  const users = normalizeUserProfiles(await loadUsersFromStorage());
+  const users = await loadUsersSafe();
   if (!user?.id) {
     return { users, userId: null, created: false };
   }
@@ -92,13 +104,13 @@ async function addUserLocal(name) {
   const sanitizedName = sanitizeUserName(name);
   if (!sanitizedName) {
     return {
-      users: normalizeUserProfiles(await loadUsersFromStorage()),
+      users: await loadUsersSafe(),
       message: "User name cannot be empty.",
       newUserId: null,
     };
   }
 
-  const users = normalizeUserProfiles(await loadUsersFromStorage());
+  const users = await loadUsersSafe();
   const duplicate = users.some(
     (user) => user.name.toLowerCase() === sanitizedName.toLowerCase()
   );
@@ -123,7 +135,7 @@ async function addUserLocal(name) {
 }
 
 async function addUserWithSupabase(input) {
-  const users = normalizeUserProfiles(await loadUsersFromStorage());
+  const users = await loadUsersSafe();
   const { name, email, password } = normalizeAddUserInput(input);
 
   if (!email) {
@@ -174,7 +186,7 @@ async function addUserWithSupabase(input) {
 }
 
 export async function getUsersState() {
-  const users = normalizeUserProfiles(await loadUsersFromStorage());
+  const users = await loadUsersSafe();
   return { users };
 }
 
@@ -188,7 +200,7 @@ export async function addUser(input) {
 }
 
 export async function signInUser(input) {
-  const users = normalizeUserProfiles(await loadUsersFromStorage());
+  const users = await loadUsersSafe();
 
   if (!isSupabasePersistenceEnabled()) {
     return {
@@ -243,7 +255,7 @@ export async function signInUser(input) {
 }
 
 export async function signOutUser() {
-  const users = normalizeUserProfiles(await loadUsersFromStorage());
+  const users = await loadUsersSafe();
 
   if (!isSupabasePersistenceEnabled()) {
     return {
@@ -267,7 +279,7 @@ export async function signOutUser() {
 }
 
 export async function restoreSignedInUser() {
-  const users = normalizeUserProfiles(await loadUsersFromStorage());
+  const users = await loadUsersSafe();
 
   if (!isSupabasePersistenceEnabled()) {
     return {
