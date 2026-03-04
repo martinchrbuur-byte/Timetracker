@@ -383,6 +383,7 @@ viewRefs.dayOverviewRangeGroup.addEventListener("click", handleOverviewRangeClic
 viewRefs.authSignInButton.addEventListener("click", handleSignIn);
 viewRefs.authSignUpButton.addEventListener("click", handleSignUp);
 viewRefs.authSignOutButton.addEventListener("click", handleSignOut);
+viewRefs.quickSignOutButton.addEventListener("click", handleSignOut);
 document.addEventListener("keydown", handleSheetKeydown);
 
 initialize();

@@ -195,11 +195,15 @@ function renderHistory(historyBody, entries) {
 export function renderTrackerState(refs, state) {
   const isAuthenticated = Boolean(state.isAuthenticated);
 
+  refs.trackerPanel.hidden = isAuthenticated;
+  refs.authPanel.hidden = isAuthenticated;
+
   refs.authEmailInput.disabled = isAuthenticated;
   refs.authPasswordInput.disabled = isAuthenticated;
   refs.authSignInButton.hidden = isAuthenticated;
   refs.authSignUpButton.hidden = isAuthenticated;
   refs.authSignOutButton.hidden = !isAuthenticated;
+  refs.quickSignOutButton.hidden = !isAuthenticated;
   refs.authStatus.textContent = isAuthenticated
     ? state.message || `Signed in as ${state.authEmail || "user"}.`
     : state.message || "Signed out.";

@@ -1,10 +1,12 @@
 const VIEW_SELECTORS = {
+  trackerPanel: "#tracker-panel",
   authPanel: "#auth-panel",
   authEmailInput: "#auth-email",
   authPasswordInput: "#auth-password",
   authSignInButton: "#auth-signin-btn",
   authSignUpButton: "#auth-signup-btn",
   authSignOutButton: "#auth-signout-btn",
+  quickSignOutButton: "#quick-signout-btn",
   authStatus: "#auth-status",
   statusPanel: "#status-panel",
   dayOverviewPanel: "#day-overview-panel",
@@ -49,7 +51,7 @@ export function buildMainView(rootElement) {
   // This file only owns static structure and element lookup.
   // Dynamic values are injected by checkView.
   rootElement.innerHTML = `
-    <section class="panel" aria-labelledby="app-title">
+    <section id="tracker-panel" class="panel" aria-labelledby="app-title">
       <h1 id="app-title">Work Hours Tracker</h1>
       <p class="subtitle">Track check-in/check-out timestamps locally in your browser.</p>
     </section>
@@ -72,7 +74,10 @@ export function buildMainView(rootElement) {
     </section>
 
     <section id="status-panel" class="panel" aria-labelledby="status-title">
-      <h2 id="status-title">Current Status</h2>
+      <div class="status-panel__header">
+        <h2 id="status-title">Current Status</h2>
+        <button id="quick-signout-btn" class="btn btn-secondary btn-compact" type="button">Sign Out</button>
+      </div>
       <div id="status-label" class="status-label inactive">Checked Out</div>
       <p id="status-meta" class="status-meta">No active session.</p>
       <button id="edit-active-btn" class="btn btn-secondary" type="button">Edit time</button>
