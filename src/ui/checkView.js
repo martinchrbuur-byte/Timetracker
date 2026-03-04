@@ -201,15 +201,14 @@ export function renderTrackerState(refs, state) {
   refs.authSignUpButton.hidden = isAuthenticated;
   refs.authSignOutButton.hidden = !isAuthenticated;
   refs.authStatus.textContent = isAuthenticated
-    ? `Signed in as ${state.authEmail || "user"}.`
-    : "Signed out.";
+    ? state.message || `Signed in as ${state.authEmail || "user"}.`
+    : state.message || "Signed out.";
 
   refs.statusPanel.hidden = !isAuthenticated;
   refs.dayOverviewPanel.hidden = !isAuthenticated;
   refs.historyPanel.hidden = !isAuthenticated;
 
   if (!isAuthenticated) {
-    refs.message.textContent = state.message;
     refs.editSheet.hidden = true;
     return;
   }
