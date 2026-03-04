@@ -45,7 +45,12 @@ export function formatDateTime(isoValue) {
     return "--";
   }
 
-  return new Date(isoValue).toLocaleString();
+  const timestamp = toTimestamp(isoValue);
+  if (!Number.isFinite(timestamp)) {
+    return "--";
+  }
+
+  return new Date(timestamp).toLocaleString();
 }
 
 export function formatDateOnly(isoValue) {
@@ -53,7 +58,12 @@ export function formatDateOnly(isoValue) {
     return "--";
   }
 
-  return new Date(isoValue).toLocaleDateString();
+  const timestamp = toTimestamp(isoValue);
+  if (!Number.isFinite(timestamp)) {
+    return "--";
+  }
+
+  return new Date(timestamp).toLocaleDateString();
 }
 
 export function formatDuration(checkInAt, checkOutAt) {

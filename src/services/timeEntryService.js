@@ -35,17 +35,7 @@ function findActiveEntry(entries) {
 }
 
 function filterEntriesByUser(entries, userId) {
-  const matchingEntries = entries.filter((entry) => entry.userId === userId);
-  if (matchingEntries.length > 0) {
-    return matchingEntries;
-  }
-
-  const legacyEntries = entries.filter((entry) => entry.userId === "default");
-  if (legacyEntries.length > 0) {
-    return legacyEntries;
-  }
-
-  return matchingEntries;
+  return entries.filter((entry) => entry.userId === userId);
 }
 
 function getEndTimestamp(checkOutAt) {

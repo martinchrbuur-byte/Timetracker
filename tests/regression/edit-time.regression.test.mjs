@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
 import { checkIn, checkOut, updateEntryTimes } from "../../src/services/timeEntryService.js";
 import { STORAGE_KEY } from "../../src/services/storageService.js";
+import { formatDateOnly, formatDateTime } from "../../src/shared/dateTime.js";
 
 const FIXTURE_TIMES = {
   DAY_START: "2026-03-04T08:00:00.000Z",
@@ -145,4 +146,27 @@ test("7) rejects second active session", async () => {
     result.message,
     "Cannot set active session: another active session already exists."
   );
+});
+
+test("8) checkIn keeps entries isolated by user id", async () => {
+  seedEntries([
+    {
+      id: "default-active",
+      checkInAt: "2026-03-04T08:00:00.000Z",
+      checkOutAt: null,
+      userId: "default",
+    },
+  ]);
+
+  const result = await checkIn("user-123");
+
+  assert.equal(result.message, "Checked in successfully.");
+  assert.ok(result.activeEntry);
+  assert.equal(result.activeEntry.userId, "user-123");
+  assert.equal(result.entries.length, 1);
+});
+
+test("9) invalid date strings render fallback labels", () => {
+  assert.equal(formatDateTime("not-a-date"), "--");
+  assert.equal(formatDateOnly("not-a-date"), "--");
 });
