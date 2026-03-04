@@ -1,5 +1,13 @@
 # Supabase Persistence Setup
 
+## Existing Project Migration
+
+If your project already has a partially-created schema (for example `time_entries` exists but `user_id` or `tracker_users` is missing), run:
+
+- [docs/supabase-migration.sql](supabase-migration.sql)
+
+This migration is idempotent and can be re-run safely.
+
 ## 1) Create Table
 
 Run this SQL in your Supabase SQL editor:

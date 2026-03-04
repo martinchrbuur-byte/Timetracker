@@ -12,6 +12,11 @@ export const AUTH_SESSION_STORAGE_KEY = "workHours.auth.session.v1";
 const SUPABASE_TABLE = "time_entries";
 const SUPABASE_USERS_TABLE = "tracker_users";
 
+const ERROR_CODES = {
+  COLUMN_UNDEFINED: "42703",
+  TABLE_NOT_FOUND: "PGRST205",
+};
+
 function mapSupabaseRowToEntry(row) {
   return {
     id: row.id,
@@ -62,16 +67,65 @@ async function supabaseRequest(path, options = {}) {
   });
 
   if (!response.ok) {
-    throw new Error(`Supabase request failed with status ${response.status}`);
+    let errorBody = null;
+
+    try {
+      errorBody = await response.json();
+    } catch (error) {
+      errorBody = null;
+    }
+
+    const messageFromBody =
+      errorBody?.message || errorBody?.msg || errorBody?.error_description || errorBody?.error;
+
+    const error = new Error(
+      messageFromBody || `Supabase request failed with status ${response.status}`
+    );
+
+    error.status = response.status;
+    error.code = typeof errorBody?.code === "string" ? errorBody.code : null;
+    error.details = errorBody?.details || null;
+    throw error;
   }
 
   return response;
 }
 
+function isMissingTimeEntryUserIdError(error) {
+  if (!error || error.code !== ERROR_CODES.COLUMN_UNDEFINED) {
+    return false;
+  }
+
+  return typeof error.message === "string" && error.message.includes("time_entries.user_id");
+}
+
+function isMissingTrackerUsersTableError(error) {
+  if (!error || error.code !== ERROR_CODES.TABLE_NOT_FOUND) {
+    return false;
+  }
+
+  return (
+    typeof error.message === "string" &&
+    error.message.includes(`public.${SUPABASE_USERS_TABLE}`)
+  );
+}
+
 async function loadEntriesFromSupabase() {
-  const query = `${SUPABASE_TABLE}?select=id,check_in_at,check_out_at,user_id&order=check_in_at.desc`;
-  const response = await supabaseRequest(query, { method: "GET" });
-  const rows = await response.json();
+  let rows = [];
+
+  try {
+    const query = `${SUPABASE_TABLE}?select=id,check_in_at,check_out_at,user_id&order=check_in_at.desc`;
+    const response = await supabaseRequest(query, { method: "GET" });
+    rows = await response.json();
+  } catch (error) {
+    if (!isMissingTimeEntryUserIdError(error)) {
+      throw error;
+    }
+
+    const legacyQuery = `${SUPABASE_TABLE}?select=id,check_in_at,check_out_at&order=check_in_at.desc`;
+    const response = await supabaseRequest(legacyQuery, { method: "GET" });
+    rows = await response.json();
+  }
 
   if (!Array.isArray(rows)) {
     return [];
@@ -86,19 +140,45 @@ async function saveEntriesToSupabase(entries) {
     .map(normalizeTimeEntry)
     .map(mapEntryToSupabaseRow);
 
-  await supabaseRequest(`${SUPABASE_TABLE}?on_conflict=id`, {
-    method: "POST",
-    headers: {
-      Prefer: "resolution=merge-duplicates,return=minimal",
-    },
-    body: JSON.stringify(payload),
-  });
+  try {
+    await supabaseRequest(`${SUPABASE_TABLE}?on_conflict=id`, {
+      method: "POST",
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    if (!isMissingTimeEntryUserIdError(error)) {
+      throw error;
+    }
+
+    const legacyPayload = payload.map(({ user_id, ...rowWithoutUserId }) => rowWithoutUserId);
+
+    await supabaseRequest(`${SUPABASE_TABLE}?on_conflict=id`, {
+      method: "POST",
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(legacyPayload),
+    });
+  }
 }
 
 async function loadUsersFromSupabase() {
-  const query = `${SUPABASE_USERS_TABLE}?select=id,name,created_at&order=created_at.asc`;
-  const response = await supabaseRequest(query, { method: "GET" });
-  const rows = await response.json();
+  let rows = [];
+
+  try {
+    const query = `${SUPABASE_USERS_TABLE}?select=id,name,created_at&order=created_at.asc`;
+    const response = await supabaseRequest(query, { method: "GET" });
+    rows = await response.json();
+  } catch (error) {
+    if (isMissingTrackerUsersTableError(error)) {
+      return [DEFAULT_USER];
+    }
+
+    throw error;
+  }
 
   if (!Array.isArray(rows)) {
     return [DEFAULT_USER];
@@ -113,13 +193,21 @@ async function saveUsersToSupabase(users) {
     .filter(isUserProfileRecord)
     .map(mapUserToSupabaseRow);
 
-  await supabaseRequest(`${SUPABASE_USERS_TABLE}?on_conflict=id`, {
-    method: "POST",
-    headers: {
-      Prefer: "resolution=merge-duplicates,return=minimal",
-    },
-    body: JSON.stringify(payload),
-  });
+  try {
+    await supabaseRequest(`${SUPABASE_USERS_TABLE}?on_conflict=id`, {
+      method: "POST",
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    if (isMissingTrackerUsersTableError(error)) {
+      return;
+    }
+
+    throw error;
+  }
 }
 
 function loadEntriesFromLocalStorage() {
