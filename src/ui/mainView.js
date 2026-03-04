@@ -6,7 +6,13 @@ const VIEW_SELECTORS = {
   dayOverviewTodayButton: "#day-overview-today-btn",
   dayOverviewHistoricButton: "#day-overview-historic-btn",
   dayOverviewHistoricDate: "#day-overview-historic-date",
+  dayOverviewHistoricTools: "#day-overview-historic-tools",
+  dayOverviewRangeGroup: "#day-overview-range-group",
+  dayOverviewRangeWeekButton: "#day-overview-range-week",
+  dayOverviewRangeMonthButton: "#day-overview-range-month",
+  dayOverviewRangeYearButton: "#day-overview-range-year",
   dayOverviewTotal: "#day-overview-total",
+  dayOverviewTotalLabel: "#day-overview-total-label",
   dayOverviewSessions: "#day-overview-sessions",
   dayOverviewAverage: "#day-overview-average",
   dayOverviewInsight: "#day-overview-insight",
@@ -86,7 +92,7 @@ export function buildMainView(rootElement) {
 
       <div class="day-overview__total">
         <p id="day-overview-total" class="day-overview__total-value">0h 0m</p>
-        <p class="day-overview__total-label">Total worked today</p>
+        <p id="day-overview-total-label" class="day-overview__total-label">Total worked today</p>
       </div>
 
       <div class="day-overview__metrics">
@@ -98,6 +104,41 @@ export function buildMainView(rootElement) {
           <p id="day-overview-average" class="metric-value">--</p>
           <p class="metric-label">Avg Session</p>
         </article>
+      </div>
+
+      <div id="day-overview-historic-tools" class="day-overview__historic-tools" hidden>
+        <div id="day-overview-range-group" class="day-overview__mode" role="tablist" aria-label="Historic overview range">
+          <button
+            id="day-overview-range-week"
+            class="overview-tab is-active"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            data-range="week"
+          >
+            Week
+          </button>
+          <button
+            id="day-overview-range-month"
+            class="overview-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-range="month"
+          >
+            Month
+          </button>
+          <button
+            id="day-overview-range-year"
+            class="overview-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-range="year"
+          >
+            Year
+          </button>
+        </div>
       </div>
 
       <p id="day-overview-insight" class="day-overview__insight">No sessions logged today yet.</p>

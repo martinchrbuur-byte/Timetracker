@@ -29,6 +29,7 @@ let appState = {
   message: READY_MESSAGE,
   dayOverviewMode: "today",
   dayOverviewDateISO: toLocalDateInputValue(),
+  dayOverviewHistoricRange: "week",
 };
 
 function render() {
@@ -42,6 +43,7 @@ function applyResult(result) {
     message: result.message,
     dayOverviewMode: appState.dayOverviewMode,
     dayOverviewDateISO: appState.dayOverviewDateISO,
+    dayOverviewHistoricRange: appState.dayOverviewHistoricRange,
   };
   render();
 }
@@ -75,6 +77,7 @@ async function initialize() {
     message: READY_MESSAGE,
     dayOverviewMode: "today",
     dayOverviewDateISO: todayDateISO,
+    dayOverviewHistoricRange: "week",
   };
 
   viewRefs.dayOverviewHistoricDate.value = todayDateISO;
@@ -168,6 +171,25 @@ function handleOverviewHistoricDateChange(event) {
   render();
 }
 
+function handleOverviewRangeClick(event) {
+  const rangeButton = event.target.closest("[data-range]");
+  if (!rangeButton) {
+    return;
+  }
+
+  const range = rangeButton.dataset.range;
+  if (!range || !["week", "month", "year"].includes(range)) {
+    return;
+  }
+
+  appState = {
+    ...appState,
+    dayOverviewMode: "historic",
+    dayOverviewHistoricRange: range,
+  };
+  render();
+}
+
 viewRefs.checkInButton.addEventListener("click", handleCheckIn);
 viewRefs.checkOutButton.addEventListener("click", handleCheckOut);
 viewRefs.historyBody.addEventListener("click", handleHistoryActionClick);
@@ -178,6 +200,7 @@ viewRefs.editSaveButton.addEventListener("click", handleEditSave);
 viewRefs.dayOverviewTodayButton.addEventListener("click", handleOverviewTodayClick);
 viewRefs.dayOverviewHistoricButton.addEventListener("click", handleOverviewHistoricClick);
 viewRefs.dayOverviewHistoricDate.addEventListener("change", handleOverviewHistoricDateChange);
+viewRefs.dayOverviewRangeGroup.addEventListener("click", handleOverviewRangeClick);
 document.addEventListener("keydown", handleSheetKeydown);
 
 initialize();

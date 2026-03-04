@@ -171,6 +171,18 @@ p {
   display: flex;
 }
 
+.day-overview__historic-tools {
+  margin-top: 0.72rem;
+}
+
+.day-overview__historic-tools .day-overview__mode {
+  width: 100%;
+}
+
+.day-overview__historic-tools .overview-tab {
+  width: 100%;
+}
+
 .day-overview__date-input {
   min-height: 36px;
   border: 1px solid var(--border);
@@ -502,6 +514,10 @@ p {
 
   .actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .day-overview__historic-tools .day-overview__mode {
+    max-width: 360px;
   }
 
   .edit-sheet-panel {

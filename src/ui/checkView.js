@@ -32,12 +32,51 @@ function parseDateInputValue(value) {
   return new Date(year, month - 1, day);
 }
 
-function buildDayOverview(entries, activeEntry, mode, dayOverviewDateISO) {
+function getWeekStart(date) {
+  const cloned = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayOfWeek = cloned.getDay();
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  cloned.setDate(cloned.getDate() + diffToMonday);
+  return cloned;
+}
+
+function getWeekEnd(date) {
+  const start = getWeekStart(date);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return end;
+}
+
+function isInRange(entryDate, targetDate, range) {
+  if (range === "year") {
+    return entryDate.getFullYear() === targetDate.getFullYear();
+  }
+
+  if (range === "month") {
+    return (
+      entryDate.getFullYear() === targetDate.getFullYear() &&
+      entryDate.getMonth() === targetDate.getMonth()
+    );
+  }
+
+  const weekStart = getWeekStart(targetDate);
+  const weekEnd = getWeekEnd(targetDate);
+  return entryDate >= weekStart && entryDate <= weekEnd;
+}
+
+function buildDayOverview(entries, activeEntry, mode, dayOverviewDateISO, dayOverviewHistoricRange) {
   const now = new Date();
   const targetDate = mode === "historic" ? parseDateInputValue(dayOverviewDateISO) || now : now;
-  const dayEntries = entries.filter((entry) =>
-    isSameLocalDay(new Date(entry.checkInAt), targetDate)
-  );
+  const range = mode === "historic" ? dayOverviewHistoricRange : "day";
+
+  const dayEntries = entries.filter((entry) => {
+    const entryDate = new Date(entry.checkInAt);
+    if (mode === "today") {
+      return isSameLocalDay(entryDate, targetDate);
+    }
+
+    return isInRange(entryDate, targetDate, range);
+  });
 
   const sessionCount = dayEntries.length;
   const durationMinutes = dayEntries.map((entry) => {
@@ -68,19 +107,37 @@ function buildDayOverview(entries, activeEntry, mode, dayOverviewDateISO) {
   }
 
   const isTodayMode = mode === "today";
+  const totalWorkedLabel = isTodayMode
+    ? "Total worked today"
+    : range === "year"
+      ? "Total worked this year"
+      : range === "month"
+        ? "Total worked this month"
+        : "Total worked this week";
+
+  const historicLabel =
+    range === "year"
+      ? `${targetDate.getFullYear()}`
+      : range === "month"
+        ? targetDate.toLocaleDateString(undefined, { month: "short", year: "numeric" })
+        : `${getWeekStart(targetDate).toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+          })} - ${getWeekEnd(targetDate).toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+          })}`;
+
   const dateLabel = isTodayMode
     ? `Today · ${now.toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
       })}`
-    : targetDate.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
+    : historicLabel;
 
   return {
     dateLabel,
+    totalWorkedLabel,
     totalLabel: formatMinutesToLabel(totalMinutes),
     sessionsLabel: String(sessionCount),
     averageLabel: averageMinutes === null ? "--" : formatMinutesToLabel(averageMinutes),
@@ -88,6 +145,7 @@ function buildDayOverview(entries, activeEntry, mode, dayOverviewDateISO) {
     insightState,
     isEmpty: sessionCount === 0,
     isTodayMode,
+    historicRange: range,
   };
 }
 
@@ -140,7 +198,8 @@ export function renderTrackerState(refs, state) {
     state.entries,
     state.activeEntry,
     state.dayOverviewMode,
-    state.dayOverviewDateISO
+    state.dayOverviewDateISO,
+    state.dayOverviewHistoricRange
   );
 
   refs.statusLabel.textContent = isActive ? "Checked In" : "Checked Out";
@@ -156,6 +215,7 @@ export function renderTrackerState(refs, state) {
 
   refs.dayOverviewDate.textContent = dayOverview.dateLabel;
   refs.dayOverviewTotal.textContent = dayOverview.totalLabel;
+  refs.dayOverviewTotalLabel.textContent = dayOverview.totalWorkedLabel;
   refs.dayOverviewSessions.textContent = dayOverview.sessionsLabel;
   refs.dayOverviewAverage.textContent = dayOverview.averageLabel;
   refs.dayOverviewInsight.textContent = dayOverview.insight;
@@ -166,6 +226,13 @@ export function renderTrackerState(refs, state) {
   refs.dayOverviewHistoricButton.classList.toggle("is-active", !dayOverview.isTodayMode);
   refs.dayOverviewTodayButton.setAttribute("aria-selected", String(dayOverview.isTodayMode));
   refs.dayOverviewHistoricButton.setAttribute("aria-selected", String(!dayOverview.isTodayMode));
+  refs.dayOverviewHistoricTools.hidden = dayOverview.isTodayMode;
+  refs.dayOverviewRangeWeekButton.classList.toggle("is-active", dayOverview.historicRange === "week");
+  refs.dayOverviewRangeMonthButton.classList.toggle("is-active", dayOverview.historicRange === "month");
+  refs.dayOverviewRangeYearButton.classList.toggle("is-active", dayOverview.historicRange === "year");
+  refs.dayOverviewRangeWeekButton.setAttribute("aria-selected", String(dayOverview.historicRange === "week"));
+  refs.dayOverviewRangeMonthButton.setAttribute("aria-selected", String(dayOverview.historicRange === "month"));
+  refs.dayOverviewRangeYearButton.setAttribute("aria-selected", String(dayOverview.historicRange === "year"));
   refs.dayOverviewHistoricDate.hidden = dayOverview.isTodayMode;
   refs.dayOverviewHistoricDate.value = state.dayOverviewDateISO;
 
