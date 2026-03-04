@@ -54,6 +54,7 @@ function renderUserSelect() {
 
 function renderAuthButton() {
   if (!isSupabasePersistenceEnabled()) {
+    viewRefs.addUserButton.textContent = "Add user";
     viewRefs.authFields.hidden = true;
     viewRefs.authEmailInput.hidden = true;
     viewRefs.authPasswordInput.hidden = true;
@@ -62,6 +63,7 @@ function renderAuthButton() {
     return;
   }
 
+  viewRefs.addUserButton.textContent = "Sign up";
   viewRefs.authFields.hidden = false;
   viewRefs.authEmailInput.hidden = false;
   viewRefs.authPasswordInput.hidden = false;
@@ -142,9 +144,6 @@ async function initialize() {
 
     viewRefs.dayOverviewHistoricDate.value = todayDateISO;
     viewRefs.dayOverviewHistoricDate.max = todayDateISO;
-    viewRefs.addUserButton.textContent = isSupabasePersistenceEnabled()
-      ? "Sign up"
-      : "Add user";
     if (isSupabasePersistenceEnabled()) {
       viewRefs.authEmailInput.value = "";
       viewRefs.authPasswordInput.value = "";
