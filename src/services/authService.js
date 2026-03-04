@@ -143,7 +143,9 @@ export async function signIn(email, password) {
   }
 
   saveAuthSession(session);
-  await upsertAuthUserProfile(payload?.user?.id || "", payload?.user?.email || normalizedEmail);
+  await upsertAuthUserProfile(payload?.user?.id || "", payload?.user?.email || normalizedEmail).catch(
+    () => {}
+  );
 
   return {
     user: payload.user || null,
@@ -200,7 +202,7 @@ export async function restoreSession() {
   };
 
   saveAuthSession(restoredSession);
-  await upsertAuthUserProfile(user?.id || "", user?.email || "");
+  await upsertAuthUserProfile(user?.id || "", user?.email || "").catch(() => {});
 
   return {
     user,

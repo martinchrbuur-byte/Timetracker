@@ -82,13 +82,23 @@ async function refreshEntriesForCurrentUser() {
     return;
   }
 
-  const initialState = await getInitialState(appState.currentUserId);
-  appState = {
-    ...appState,
-    entries: initialState.entries,
-    activeEntry: initialState.activeEntry,
-  };
-  render();
+  try {
+    const initialState = await getInitialState(appState.currentUserId);
+    appState = {
+      ...appState,
+      entries: initialState.entries,
+      activeEntry: initialState.activeEntry,
+    };
+    render();
+  } catch (error) {
+    appState = {
+      ...appState,
+      entries: [],
+      activeEntry: null,
+      message: `Data load failed: ${error.message}`,
+    };
+    render();
+  }
 }
 
 async function initialize() {
@@ -96,9 +106,19 @@ async function initialize() {
     const restored = await restoreSession();
     const restoredUserId = restored.user?.id || null;
     const restoredEmail = restored.user?.email || "";
-    const initialState = restoredUserId
-      ? await getInitialState(restoredUserId)
-      : { entries: [], activeEntry: null };
+    let initialState = { entries: [], activeEntry: null };
+    let startupMessage = restoredUserId
+      ? READY_MESSAGE
+      : "Sign in or sign up to start tracking time.";
+
+    if (restoredUserId) {
+      try {
+        initialState = await getInitialState(restoredUserId);
+      } catch (error) {
+        startupMessage = `Signed in, but data table setup is missing: ${error.message}`;
+      }
+    }
+
     const todayDateISO = toLocalDateInputValue();
 
     appState = {
@@ -108,9 +128,7 @@ async function initialize() {
       currentUserId: restoredUserId || "default",
       entries: initialState.entries,
       activeEntry: initialState.activeEntry,
-      message: restoredUserId
-        ? READY_MESSAGE
-        : "Sign in or sign up to start tracking time.",
+      message: startupMessage,
       dayOverviewMode: "today",
       dayOverviewDateISO: todayDateISO,
       dayOverviewHistoricRange: "week",
