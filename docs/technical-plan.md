@@ -69,6 +69,7 @@ Derived fields in UI/service:
 ```
 /public
   index.html
+  app-icon.svg
   styles.css
 
 /src
