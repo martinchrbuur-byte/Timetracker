@@ -21,6 +21,11 @@ import {
   toLocalDateInputValue,
   toLocalDateTimeInputValue,
 } from "./shared/dateTime.js";
+import {
+  getSyncStatus,
+  processQueuedOperations,
+  subscribeToSyncStatus,
+} from "./services/storageService.js";
 
 const READY_MESSAGE = "Ready.";
 
@@ -34,6 +39,7 @@ let appState = {
   currentUserId: "default",
   entries: [],
   activeEntry: null,
+  syncStatus: getSyncStatus(),
   message: READY_MESSAGE,
   dayOverviewMode: "today",
   dayOverviewDateISO: toLocalDateInputValue(),
@@ -105,8 +111,16 @@ function applyResult(result) {
     entries: result.entries,
     activeEntry: result.activeEntry,
     message: result.message,
+    syncStatus: getSyncStatus(),
   });
   render();
+}
+
+async function syncPendingOperations() {
+  await processQueuedOperations();
+  patchStateAndRender({
+    syncStatus: getSyncStatus(),
+  });
 }
 
 function openEditSheet(entryId) {
@@ -161,6 +175,7 @@ async function refreshEntriesForCurrentUser() {
       ...appState,
       entries: initialState.entries,
       activeEntry: initialState.activeEntry,
+      syncStatus: getSyncStatus(),
     };
     render();
   } catch (error) {
@@ -168,6 +183,7 @@ async function refreshEntriesForCurrentUser() {
       ...appState,
       entries: [],
       activeEntry: null,
+      syncStatus: getSyncStatus(),
       message: `Data load failed: ${error.message}`,
     };
     render();
@@ -201,6 +217,7 @@ async function initialize() {
       currentUserId: restoredUserId || "default",
       entries: initialState.entries,
       activeEntry: initialState.activeEntry,
+      syncStatus: getSyncStatus(),
       message: startupMessage,
       dayOverviewMode: "today",
       dayOverviewDateISO: todayDateISO,
@@ -211,9 +228,11 @@ async function initialize() {
     viewRefs.dayOverviewHistoricDate.max = todayDateISO;
 
     render();
+    await syncPendingOperations();
   } catch (error) {
     appState = {
       ...appState,
+      syncStatus: getSyncStatus(),
       message: `Initialization failed: ${error.message}`,
     };
     render();
@@ -499,6 +518,7 @@ async function handleSignOut() {
       currentUserId: "default",
       entries: [],
       activeEntry: null,
+      syncStatus: getSyncStatus(),
       message: "Signed out.",
     };
     closeEditSheet();
@@ -535,5 +555,15 @@ viewRefs.authSignUpButton.addEventListener("click", handleSignUp);
 viewRefs.authSignOutButton.addEventListener("click", handleSignOut);
 viewRefs.quickSignOutButton.addEventListener("click", handleSignOut);
 document.addEventListener("keydown", handleSheetKeydown);
+
+subscribeToSyncStatus((syncStatus) => {
+  patchStateAndRender({ syncStatus });
+});
+
+if (typeof window !== "undefined") {
+  window.addEventListener("online", () => {
+    void syncPendingOperations();
+  });
+}
 
 initialize();

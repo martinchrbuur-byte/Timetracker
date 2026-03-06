@@ -10,6 +10,8 @@ export const STORAGE_KEY = "workHours.entries.v1";
 export const USERS_STORAGE_KEY = "workHours.users.v1";
 export const AUTH_SESSION_STORAGE_KEY = "workHours.auth.session.v1";
 export const PASSWORD_CREDENTIALS_STORAGE_KEY = "workHours.auth.passwords.v1";
+export const OFFLINE_SYNC_QUEUE_STORAGE_KEY = "workHours.sync.queue.v1";
+export const ENTRIES_CACHE_STORAGE_KEY = "workHours.entries.cache.v1";
 const SUPABASE_TABLE = "time_entries";
 const SUPABASE_USERS_TABLE = "tracker_users";
 const SOFT_DELETED_USER_ID = "__deleted__";
@@ -21,6 +23,24 @@ const ERROR_CODES = {
   COLUMN_UNDEFINED: "42703",
   TABLE_NOT_FOUND: "PGRST205",
 };
+
+const SYNC_STATES = {
+  IDLE: "idle",
+  ONLINE: "online",
+  OFFLINE: "offline",
+  OFFLINE_PENDING: "offline-pending",
+  SYNCING: "syncing",
+  SYNC_ERROR: "sync-error",
+};
+
+const syncStatusListeners = new Set();
+let syncStatusSnapshot = {
+  state: SYNC_STATES.IDLE,
+  pendingCount: 0,
+  lastError: "",
+  lastSyncedAt: null,
+};
+let isQueueProcessing = false;
 
 function mapSupabaseRowToEntry(row) {
   return {
@@ -268,6 +288,136 @@ function loadEntriesFromLocalStorage() {
     return parsed.filter(isTimeEntryRecord).map(normalizeTimeEntry);
   } catch (error) {
     return [];
+  }
+}
+
+function loadEntriesCacheFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(ENTRIES_CACHE_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter(isTimeEntryRecord).map(normalizeTimeEntry);
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveEntriesCacheToLocalStorage(entries) {
+  localStorage.setItem(ENTRIES_CACHE_STORAGE_KEY, JSON.stringify(entries));
+}
+
+function deleteEntryFromEntriesCache(entryId) {
+  const normalizedEntryId = typeof entryId === "string" ? entryId.trim() : "";
+  if (!normalizedEntryId) {
+    return;
+  }
+
+  const entries = loadEntriesCacheFromLocalStorage();
+  const updatedEntries = entries.filter((entry) => entry.id !== normalizedEntryId);
+  saveEntriesCacheToLocalStorage(updatedEntries);
+}
+
+function loadOfflineSyncQueue() {
+  try {
+    const raw = localStorage.getItem(OFFLINE_SYNC_QUEUE_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter((item) => item && typeof item === "object")
+      .filter(
+        (item) =>
+          (item.type === "saveEntries" || item.type === "deleteEntry") &&
+          (item.type === "deleteEntry" || Array.isArray(item.payload)) &&
+          (item.type === "saveEntries" || typeof item.payload === "string")
+      )
+      .map((item) => ({
+        id: typeof item.id === "string" ? item.id : `${Date.now()}-${Math.random()}`,
+        type: item.type,
+        payload:
+          item.type === "saveEntries"
+            ? item.payload.filter(isTimeEntryRecord).map(normalizeTimeEntry)
+            : item.payload,
+        createdAt:
+          typeof item.createdAt === "string" ? item.createdAt : new Date().toISOString(),
+        attempts: Number.isFinite(item.attempts) ? item.attempts : 0,
+      }));
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveOfflineSyncQueue(queue) {
+  localStorage.setItem(OFFLINE_SYNC_QUEUE_STORAGE_KEY, JSON.stringify(queue));
+}
+
+function emitSyncStatus(nextStatus) {
+  syncStatusSnapshot = {
+    ...syncStatusSnapshot,
+    ...nextStatus,
+  };
+
+  syncStatusListeners.forEach((listener) => {
+    listener(getSyncStatus());
+  });
+}
+
+function isOfflineInBrowser() {
+  return typeof navigator !== "undefined" && navigator?.onLine === false;
+}
+
+function isRetryablePersistenceError(error) {
+  if (isOfflineInBrowser()) {
+    return true;
+  }
+
+  const status = Number.isFinite(error?.status) ? error.status : null;
+  if (status === null) {
+    return true;
+  }
+
+  return status >= 500 || status === 429;
+}
+
+function enqueueOfflineSyncOperation(operation) {
+  const queue = loadOfflineSyncQueue();
+
+  queue.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    type: operation.type,
+    payload: operation.payload,
+    createdAt: new Date().toISOString(),
+    attempts: 0,
+  });
+
+  saveOfflineSyncQueue(queue);
+  emitSyncStatus({
+    state: SYNC_STATES.OFFLINE_PENDING,
+    pendingCount: queue.length,
+  });
+}
+
+async function applyQueuedOperation(operation) {
+  if (operation.type === "saveEntries") {
+    await saveEntriesToSupabase(operation.payload);
+    return;
+  }
+
+  if (operation.type === "deleteEntry") {
+    await deleteEntryFromSupabase(operation.payload);
   }
 }
 
@@ -561,15 +711,145 @@ async function runPersistenceWrite(supabaseWriter, localWriter, payload) {
 }
 
 export async function loadEntriesFromStorage() {
-  return runPersistenceRead(loadEntriesFromSupabase, loadEntriesFromLocalStorage);
+  if (!isSupabasePersistenceEnabled()) {
+    const localEntries = loadEntriesFromLocalStorage();
+    emitSyncStatus({
+      state: SYNC_STATES.IDLE,
+      pendingCount: 0,
+      lastError: "",
+    });
+    return localEntries;
+  }
+
+  try {
+    const entries = await loadEntriesFromSupabase();
+    saveEntriesCacheToLocalStorage(entries);
+
+    const pendingCount = loadOfflineSyncQueue().length;
+    emitSyncStatus({
+      state: pendingCount > 0 ? SYNC_STATES.OFFLINE_PENDING : SYNC_STATES.ONLINE,
+      pendingCount,
+      lastError: "",
+      lastSyncedAt: new Date().toISOString(),
+    });
+
+    return entries;
+  } catch (error) {
+    const cachedEntries = loadEntriesCacheFromLocalStorage();
+    const pendingCount = loadOfflineSyncQueue().length;
+
+    emitSyncStatus({
+      state: pendingCount > 0 ? SYNC_STATES.OFFLINE_PENDING : SYNC_STATES.OFFLINE,
+      pendingCount,
+      lastError: isRetryablePersistenceError(error) ? "" : error?.message || "Sync unavailable.",
+    });
+
+    return cachedEntries;
+  }
 }
 
 export async function saveEntriesToStorage(entries) {
-  await runPersistenceWrite(saveEntriesToSupabase, saveEntriesToLocalStorage, entries);
+  const normalizedEntries = entries.filter(isTimeEntryRecord).map(normalizeTimeEntry);
+
+  if (!isSupabasePersistenceEnabled()) {
+    saveEntriesToLocalStorage(normalizedEntries);
+    emitSyncStatus({
+      state: SYNC_STATES.IDLE,
+      pendingCount: 0,
+      lastError: "",
+    });
+    return;
+  }
+
+  saveEntriesCacheToLocalStorage(normalizedEntries);
+
+  if (isOfflineInBrowser()) {
+    enqueueOfflineSyncOperation({
+      type: "saveEntries",
+      payload: normalizedEntries,
+    });
+    return;
+  }
+
+  try {
+    await saveEntriesToSupabase(normalizedEntries);
+
+    emitSyncStatus({
+      state: SYNC_STATES.ONLINE,
+      pendingCount: loadOfflineSyncQueue().length,
+      lastError: "",
+      lastSyncedAt: new Date().toISOString(),
+    });
+
+    await processQueuedOperations();
+  } catch (error) {
+    if (!isRetryablePersistenceError(error)) {
+      emitSyncStatus({
+        state: SYNC_STATES.SYNC_ERROR,
+        lastError: error?.message || "Sync failed.",
+      });
+      throw error;
+    }
+
+    enqueueOfflineSyncOperation({
+      type: "saveEntries",
+      payload: normalizedEntries,
+    });
+  }
 }
 
 export async function deleteEntryFromStorage(entryId) {
-  await runPersistenceWrite(deleteEntryFromSupabase, deleteEntryFromLocalStorage, entryId);
+  const normalizedEntryId = typeof entryId === "string" ? entryId.trim() : "";
+
+  if (!normalizedEntryId) {
+    return;
+  }
+
+  if (!isSupabasePersistenceEnabled()) {
+    deleteEntryFromLocalStorage(normalizedEntryId);
+    emitSyncStatus({
+      state: SYNC_STATES.IDLE,
+      pendingCount: 0,
+      lastError: "",
+    });
+    return;
+  }
+
+  deleteEntryFromEntriesCache(normalizedEntryId);
+
+  if (isOfflineInBrowser()) {
+    enqueueOfflineSyncOperation({
+      type: "deleteEntry",
+      payload: normalizedEntryId,
+    });
+    return;
+  }
+
+  try {
+    await deleteEntryFromSupabase(normalizedEntryId);
+
+    emitSyncStatus({
+      state: SYNC_STATES.ONLINE,
+      pendingCount: loadOfflineSyncQueue().length,
+      lastError: "",
+      lastSyncedAt: new Date().toISOString(),
+    });
+
+    await processQueuedOperations();
+  } catch (error) {
+    if (!isRetryablePersistenceError(error)) {
+      emitSyncStatus({
+        state: SYNC_STATES.SYNC_ERROR,
+        lastError: error?.message || "Sync failed.",
+      });
+      throw error;
+    }
+
+    enqueueOfflineSyncOperation({
+      type: "deleteEntry",
+      payload: normalizedEntryId,
+    });
+  }
 }
 
 export async function loadUsersFromStorage() {
@@ -590,6 +870,99 @@ export function loadAuthSession() {
 
 export function clearAuthSession() {
   clearAuthSessionFromLocalStorage();
+}
+
+export function getSyncStatus() {
+  return {
+    ...syncStatusSnapshot,
+    pendingCount: loadOfflineSyncQueue().length,
+  };
+}
+
+export function subscribeToSyncStatus(listener) {
+  if (typeof listener !== "function") {
+    return () => {};
+  }
+
+  syncStatusListeners.add(listener);
+  listener(getSyncStatus());
+
+  return () => {
+    syncStatusListeners.delete(listener);
+  };
+}
+
+export async function processQueuedOperations() {
+  if (!isSupabasePersistenceEnabled()) {
+    return getSyncStatus();
+  }
+
+  if (isQueueProcessing) {
+    return getSyncStatus();
+  }
+
+  let queue = loadOfflineSyncQueue();
+  if (queue.length === 0) {
+    emitSyncStatus({
+      state: SYNC_STATES.ONLINE,
+      pendingCount: 0,
+      lastError: "",
+      lastSyncedAt: syncStatusSnapshot.lastSyncedAt || new Date().toISOString(),
+    });
+    return getSyncStatus();
+  }
+
+  if (isOfflineInBrowser()) {
+    emitSyncStatus({
+      state: SYNC_STATES.OFFLINE_PENDING,
+      pendingCount: queue.length,
+    });
+    return getSyncStatus();
+  }
+
+  isQueueProcessing = true;
+  emitSyncStatus({
+    state: SYNC_STATES.SYNCING,
+    pendingCount: queue.length,
+    lastError: "",
+  });
+
+  try {
+    while (queue.length > 0) {
+      const operation = queue[0];
+
+      try {
+        await applyQueuedOperation(operation);
+        queue.shift();
+        saveOfflineSyncQueue(queue);
+
+        emitSyncStatus({
+          state: queue.length > 0 ? SYNC_STATES.SYNCING : SYNC_STATES.ONLINE,
+          pendingCount: queue.length,
+          lastError: "",
+          lastSyncedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        operation.attempts = Number.isFinite(operation.attempts) ? operation.attempts + 1 : 1;
+        queue[0] = operation;
+        saveOfflineSyncQueue(queue);
+
+        emitSyncStatus({
+          state: isRetryablePersistenceError(error)
+            ? SYNC_STATES.OFFLINE_PENDING
+            : SYNC_STATES.SYNC_ERROR,
+          pendingCount: queue.length,
+          lastError: error?.message || "Sync failed.",
+        });
+
+        break;
+      }
+    }
+  } finally {
+    isQueueProcessing = false;
+  }
+
+  return getSyncStatus();
 }
 
 export async function upsertAuthUserProfile(userId, email) {

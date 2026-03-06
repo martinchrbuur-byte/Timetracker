@@ -36,6 +36,44 @@ function formatTrendLabel(trend) {
   return `${directionLabel} (${sign}${deltaLabel})`;
 }
 
+function getSyncStatusPresentation(syncStatus) {
+  const pendingCount = syncStatus?.pendingCount || 0;
+  const state = syncStatus?.state || "idle";
+
+  if (state === "syncing") {
+    return {
+      label: pendingCount > 0 ? `Syncing ${pendingCount}` : "Syncing",
+      className: "sync-status--syncing",
+    };
+  }
+
+  if (state === "offline-pending") {
+    return {
+      label: `Pending ${pendingCount}`,
+      className: "sync-status--pending",
+    };
+  }
+
+  if (state === "sync-error") {
+    return {
+      label: "Sync error",
+      className: "sync-status--error",
+    };
+  }
+
+  if (state === "offline") {
+    return {
+      label: "Offline",
+      className: "sync-status--offline",
+    };
+  }
+
+  return {
+    label: "Synced",
+    className: "sync-status--online",
+  };
+}
+
 function buildDayOverview(entries, activeEntry, mode, dayOverviewDateISO, dayOverviewHistoricRange) {
   const now = new Date();
   const targetDate = mode === "historic" ? parseLocalDateKey(dayOverviewDateISO) || now : now;
@@ -259,6 +297,18 @@ export function renderTrackerState(refs, state) {
   refs.authStatus.textContent = isAuthenticated
     ? state.message || `Signed in as ${state.authEmail || "user"}.`
     : state.message || "Signed out.";
+
+  const syncStatus = getSyncStatusPresentation(state.syncStatus);
+  refs.syncStatus.textContent = syncStatus.label;
+  refs.syncStatus.classList.remove(
+    "sync-status--online",
+    "sync-status--syncing",
+    "sync-status--pending",
+    "sync-status--offline",
+    "sync-status--error"
+  );
+  refs.syncStatus.classList.add(syncStatus.className);
+  refs.syncStatus.title = state.syncStatus?.lastError || "";
 
   refs.statusPanel.hidden = !isAuthenticated;
   refs.dayOverviewPanel.hidden = !isAuthenticated;
