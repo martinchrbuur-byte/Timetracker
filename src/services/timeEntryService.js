@@ -272,6 +272,56 @@ function getResolvedEndTimestamp(entry, nowTimestamp, nowDateKey) {
   return toEndOfLocalDayTimestamp(entryDate);
 }
 
+function toDurationMinutes(startTimestamp, endTimestamp) {
+  if (!Number.isFinite(startTimestamp) || !Number.isFinite(endTimestamp)) {
+    return 0;
+  }
+
+  if (endTimestamp <= startTimestamp) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor((endTimestamp - startTimestamp) / 60000));
+}
+
+function averageMinutes(rows) {
+  if (rows.length === 0) {
+    return 0;
+  }
+
+  const total = rows.reduce((sum, row) => sum + row.totalMinutes, 0);
+  return Math.floor(total / rows.length);
+}
+
+function buildTrendSummary(rows) {
+  if (rows.length < 2) {
+    return {
+      direction: "stable",
+      deltaMinutes: 0,
+      firstHalfAverageMinutes: rows.length === 1 ? rows[0].totalMinutes : 0,
+      secondHalfAverageMinutes: rows.length === 1 ? rows[0].totalMinutes : 0,
+    };
+  }
+
+  const midpoint = Math.floor(rows.length / 2);
+  const firstHalfRows = rows.slice(0, midpoint);
+  const secondHalfRows = rows.slice(midpoint);
+
+  const firstHalfAverageMinutes = averageMinutes(firstHalfRows);
+  const secondHalfAverageMinutes = averageMinutes(secondHalfRows);
+  const deltaMinutes = secondHalfAverageMinutes - firstHalfAverageMinutes;
+
+  const direction =
+    deltaMinutes > 20 ? "increasing" : deltaMinutes < -20 ? "decreasing" : "stable";
+
+  return {
+    direction,
+    deltaMinutes,
+    firstHalfAverageMinutes,
+    secondHalfAverageMinutes,
+  };
+}
+
 export function buildHistoricStartEndOverview(entries, dateKey, range, nowIso = new Date().toISOString()) {
   const normalizedRange = normalizeHistoricRange(range);
   const bounds = getRangeBounds(dateKey, normalizedRange);
@@ -344,5 +394,89 @@ export function buildHistoricStartEndOverview(entries, dateKey, range, nowIso = 
     rows: sortedRows,
     periodStartLabel,
     periodEndLabel,
+  };
+}
+
+export function buildHistoricAnalytics(entries, dateKey, range, nowIso = new Date().toISOString()) {
+  const normalizedRange = normalizeHistoricRange(range);
+  const bounds = getRangeBounds(dateKey, normalizedRange);
+
+  if (!bounds) {
+    return {
+      range: normalizedRange,
+      rows: [],
+      totalMinutes: 0,
+      activeDays: 0,
+      averageMinutesPerActiveDay: 0,
+      peakDay: null,
+      trend: {
+        direction: "stable",
+        deltaMinutes: 0,
+        firstHalfAverageMinutes: 0,
+        secondHalfAverageMinutes: 0,
+      },
+      periodStartLabel: "--",
+      periodEndLabel: "--",
+    };
+  }
+
+  const nowTimestamp = toTimestamp(nowIso);
+  const nowDateKey = toLocalDateKey(nowIso);
+  const rangeStartTimestamp = toStartOfLocalDayTimestamp(bounds.start);
+  const rangeEndTimestamp = toEndOfLocalDayTimestamp(bounds.end);
+  const rowsByDate = new Map();
+
+  entries.forEach((entry) => {
+    const startTimestamp = toTimestamp(entry.checkInAt);
+    if (!Number.isFinite(startTimestamp)) {
+      return;
+    }
+
+    const startDate = new Date(startTimestamp);
+    const dayStartTimestamp = toStartOfLocalDayTimestamp(startDate);
+    if (dayStartTimestamp < rangeStartTimestamp || dayStartTimestamp > rangeEndTimestamp) {
+      return;
+    }
+
+    const endTimestamp = getResolvedEndTimestamp(entry, nowTimestamp, nowDateKey);
+    if (!Number.isFinite(endTimestamp)) {
+      return;
+    }
+
+    const dateKeyForRow = toLocalDateKey(entry.checkInAt);
+    const existing = rowsByDate.get(dateKeyForRow) || {
+      dateKey: dateKeyForRow,
+      dateLabel: formatDateOnly(entry.checkInAt),
+      sessionCount: 0,
+      totalMinutes: 0,
+    };
+
+    existing.totalMinutes += toDurationMinutes(startTimestamp, endTimestamp);
+    existing.sessionCount += 1;
+    rowsByDate.set(dateKeyForRow, existing);
+  });
+
+  const rows = Array.from(rowsByDate.values()).sort(
+    (leftRow, rightRow) => toTimestamp(leftRow.dateKey) - toTimestamp(rightRow.dateKey)
+  );
+
+  const totalMinutes = rows.reduce((sum, row) => sum + row.totalMinutes, 0);
+  const activeDays = rows.filter((row) => row.totalMinutes > 0).length;
+  const averageMinutesPerActiveDay = activeDays > 0 ? Math.floor(totalMinutes / activeDays) : 0;
+  const peakDay =
+    rows.length === 0
+      ? null
+      : rows.reduce((peak, row) => (row.totalMinutes > peak.totalMinutes ? row : peak), rows[0]);
+
+  return {
+    range: normalizedRange,
+    rows,
+    totalMinutes,
+    activeDays,
+    averageMinutesPerActiveDay,
+    peakDay,
+    trend: buildTrendSummary(rows),
+    periodStartLabel: formatDateOnly(bounds.start.toISOString()),
+    periodEndLabel: formatDateOnly(bounds.end.toISOString()),
   };
 }

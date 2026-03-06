@@ -28,6 +28,13 @@ const VIEW_SELECTORS = {
   dayOverviewPeriodLabel: "#day-overview-period-label",
   dayOverviewCopyButton: "#day-overview-copy-btn",
   dayOverviewRows: "#day-overview-rows",
+  dayOverviewAnalytics: "#day-overview-analytics",
+  dayOverviewAnalyticsTotal: "#day-overview-analytics-total",
+  dayOverviewAnalyticsActiveDays: "#day-overview-analytics-active-days",
+  dayOverviewAnalyticsAverage: "#day-overview-analytics-average",
+  dayOverviewAnalyticsTrend: "#day-overview-analytics-trend",
+  dayOverviewAnalyticsPeak: "#day-overview-analytics-peak",
+  dayOverviewAnalyticsRows: "#day-overview-analytics-rows",
   dayOverviewTotal: "#day-overview-total",
   dayOverviewTotalLabel: "#day-overview-total-label",
   dayOverviewSessions: "#day-overview-sessions",
@@ -196,6 +203,34 @@ export function buildMainView(rootElement) {
             </button>
           </div>
           <div id="day-overview-rows" class="day-overview__rows" role="list" aria-label="Historic start and end times"></div>
+        </div>
+
+        <div id="day-overview-analytics" class="day-overview__analytics" hidden>
+          <p class="day-overview__analytics-title">Trend analytics</p>
+          <div class="day-overview__analytics-metrics">
+            <article class="metric-card" aria-label="Total worked in selected range">
+              <p id="day-overview-analytics-total" class="metric-value">0h 0m</p>
+              <p class="metric-label">Total</p>
+            </article>
+            <article class="metric-card" aria-label="Days with tracked work">
+              <p id="day-overview-analytics-active-days" class="metric-value">0</p>
+              <p class="metric-label">Active Days</p>
+            </article>
+            <article class="metric-card" aria-label="Average worked time for active days">
+              <p id="day-overview-analytics-average" class="metric-value">0h 0m</p>
+              <p class="metric-label">Avg Active Day</p>
+            </article>
+            <article class="metric-card" aria-label="Trend direction across selected range">
+              <p id="day-overview-analytics-trend" class="metric-value">Stable</p>
+              <p class="metric-label">Trend</p>
+            </article>
+          </div>
+
+          <div class="day-overview__analytics-peak">
+            <p id="day-overview-analytics-peak" class="day-overview__period-label">Peak day --</p>
+          </div>
+
+          <div id="day-overview-analytics-rows" class="day-overview__analytics-rows" role="list" aria-label="Daily work trend"></div>
         </div>
       </div>
 

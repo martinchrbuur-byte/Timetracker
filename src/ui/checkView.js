@@ -15,6 +15,27 @@ function formatMinutesToLabel(totalMinutes) {
   return `${hours}h ${minutes}m`;
 }
 
+function formatTrendLabel(trend) {
+  if (!trend) {
+    return "Stable";
+  }
+
+  const directionLabel =
+    trend.direction === "increasing"
+      ? "Increasing"
+      : trend.direction === "decreasing"
+        ? "Decreasing"
+        : "Stable";
+
+  const deltaLabel = formatMinutesToLabel(Math.abs(trend.deltaMinutes || 0));
+  if (!trend.deltaMinutes) {
+    return directionLabel;
+  }
+
+  const sign = trend.deltaMinutes > 0 ? "+" : "-";
+  return `${directionLabel} (${sign}${deltaLabel})`;
+}
+
 function buildDayOverview(entries, activeEntry, mode, dayOverviewDateISO, dayOverviewHistoricRange) {
   const now = new Date();
   const targetDate = mode === "historic" ? parseLocalDateKey(dayOverviewDateISO) || now : now;
@@ -181,6 +202,47 @@ function renderHistoricOverview(refs, historicOverview, isTodayMode) {
   refs.dayOverviewCopyButton.disabled = false;
 }
 
+function buildHistoricAnalyticsRow(row) {
+  return `
+    <article class="day-overview__row" role="listitem">
+      <span class="day-overview__row-date">${row.dateLabel}</span>
+      <span class="day-overview__row-time">${formatMinutesToLabel(row.totalMinutes)}</span>
+    </article>
+  `;
+}
+
+function renderHistoricAnalytics(refs, historicAnalytics, isTodayMode) {
+  if (isTodayMode) {
+    refs.dayOverviewAnalytics.hidden = true;
+    refs.dayOverviewAnalyticsRows.innerHTML = "";
+    return;
+  }
+
+  refs.dayOverviewAnalytics.hidden = false;
+
+  const rows = historicAnalytics?.rows || [];
+  const totalMinutes = historicAnalytics?.totalMinutes || 0;
+  const activeDays = historicAnalytics?.activeDays || 0;
+  const averageMinutesPerActiveDay = historicAnalytics?.averageMinutesPerActiveDay || 0;
+  const trendLabel = formatTrendLabel(historicAnalytics?.trend);
+  const peakDay = historicAnalytics?.peakDay || null;
+
+  refs.dayOverviewAnalyticsTotal.textContent = formatMinutesToLabel(totalMinutes);
+  refs.dayOverviewAnalyticsActiveDays.textContent = String(activeDays);
+  refs.dayOverviewAnalyticsAverage.textContent = formatMinutesToLabel(averageMinutesPerActiveDay);
+  refs.dayOverviewAnalyticsTrend.textContent = trendLabel;
+  refs.dayOverviewAnalyticsPeak.textContent = peakDay
+    ? `Peak day ${peakDay.dateLabel} · ${formatMinutesToLabel(peakDay.totalMinutes)}`
+    : "Peak day --";
+
+  if (rows.length === 0) {
+    refs.dayOverviewAnalyticsRows.innerHTML = `<p class="day-overview__rows-empty">No trend data for this period.</p>`;
+    return;
+  }
+
+  refs.dayOverviewAnalyticsRows.innerHTML = rows.map(buildHistoricAnalyticsRow).join("");
+}
+
 export function renderTrackerState(refs, state) {
   const isAuthenticated = Boolean(state.isAuthenticated);
 
@@ -253,6 +315,7 @@ export function renderTrackerState(refs, state) {
   refs.dayOverviewHistoricDate.value = state.dayOverviewDateISO;
 
   renderHistoricOverview(refs, state.historicOverview, dayOverview.isTodayMode);
+  renderHistoricAnalytics(refs, state.historicAnalytics, dayOverview.isTodayMode);
 
   refs.message.textContent = state.message;
 

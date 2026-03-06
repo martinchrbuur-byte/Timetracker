@@ -222,6 +222,39 @@ p {
   margin-top: 0.72rem;
 }
 
+.day-overview__analytics {
+  margin-top: 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0.58rem;
+}
+
+.day-overview__analytics-title {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.day-overview__analytics-metrics {
+  margin-top: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.day-overview__analytics-peak {
+  margin-top: 0.5rem;
+}
+
+.day-overview__analytics-rows {
+  margin-top: 0.5rem;
+  display: grid;
+  gap: 0.3rem;
+  max-height: 170px;
+  overflow: auto;
+}
+
 .day-overview__period {
   margin-top: 0.72rem;
   border: 1px solid var(--border);

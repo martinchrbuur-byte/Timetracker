@@ -1,6 +1,7 @@
 import { buildMainView } from "./ui/mainView.js";
 import { renderTrackerState } from "./ui/checkView.js";
 import {
+  buildHistoricAnalytics,
   buildHistoricStartEndOverview,
   checkIn,
   checkOut,
@@ -43,6 +44,22 @@ let appState = {
     periodStartLabel: "--",
     periodEndLabel: "--",
   },
+  historicAnalytics: {
+    range: "week",
+    rows: [],
+    totalMinutes: 0,
+    activeDays: 0,
+    averageMinutesPerActiveDay: 0,
+    peakDay: null,
+    trend: {
+      direction: "stable",
+      deltaMinutes: 0,
+      firstHalfAverageMinutes: 0,
+      secondHalfAverageMinutes: 0,
+    },
+    periodStartLabel: "--",
+    periodEndLabel: "--",
+  },
 };
 
 function patchState(nextState) {
@@ -70,6 +87,11 @@ function render() {
   appState = {
     ...appState,
     historicOverview: buildHistoricStartEndOverview(
+      appState.entries,
+      appState.dayOverviewDateISO,
+      appState.dayOverviewHistoricRange
+    ),
+    historicAnalytics: buildHistoricAnalytics(
       appState.entries,
       appState.dayOverviewDateISO,
       appState.dayOverviewHistoricRange
