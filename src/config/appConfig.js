@@ -17,15 +17,19 @@ function getWindowConfig() {
   return window.TRACKER_CONFIG || {};
 }
 
+function mergePersistenceConfig(runtimeConfig) {
+  return {
+    ...DEFAULT_CONFIG.persistence,
+    ...(runtimeConfig.persistence || {}),
+  };
+}
+
 export function getAppConfig() {
   const runtimeConfig = getWindowConfig();
   return {
     ...DEFAULT_CONFIG,
     ...runtimeConfig,
-    persistence: {
-      ...DEFAULT_CONFIG.persistence,
-      ...(runtimeConfig.persistence || {}),
-    },
+    persistence: mergePersistenceConfig(runtimeConfig),
   };
 }
 

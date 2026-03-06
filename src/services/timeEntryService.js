@@ -76,6 +76,16 @@ async function buildResult(allEntries, userId, message, shouldPersist = false) {
   };
 }
 
+async function runWithFallback(userId, fallbackMessage, operation) {
+  try {
+    const allEntries = await readEntries();
+    return operation(allEntries);
+  } catch (error) {
+    const allEntries = await readEntries().catch(() => []);
+    return buildResult(allEntries, userId, fallbackMessage);
+  }
+}
+
 function intervalsOverlap(leftStart, leftEnd, rightStart, rightEnd) {
   return leftStart < rightEnd && rightStart < leftEnd;
 }
@@ -136,8 +146,7 @@ export async function getViewState(entries, userId, message) {
 }
 
 export async function checkIn(userId = "default") {
-  try {
-    const allEntries = await readEntries();
+  return runWithFallback(userId, MESSAGES.CHECK_IN_ERROR, (allEntries) => {
     const userEntries = filterEntriesByUser(allEntries, userId);
     const activeEntry = findActiveEntry(userEntries);
 
@@ -147,15 +156,11 @@ export async function checkIn(userId = "default") {
 
     const newEntry = createTimeEntry(new Date().toISOString(), userId);
     return buildResult([newEntry, ...allEntries], userId, MESSAGES.CHECKED_IN, true);
-  } catch (error) {
-    const allEntries = await readEntries().catch(() => []);
-    return buildResult(allEntries, userId, MESSAGES.CHECK_IN_ERROR);
-  }
+  });
 }
 
 export async function checkOut(userId = "default") {
-  try {
-    const allEntries = await readEntries();
+  return runWithFallback(userId, MESSAGES.CHECK_OUT_ERROR, (allEntries) => {
     const userEntries = filterEntriesByUser(allEntries, userId);
     const activeEntry = findActiveEntry(userEntries);
 
@@ -173,15 +178,11 @@ export async function checkOut(userId = "default") {
     );
 
     return buildResult(updatedEntries, userId, MESSAGES.CHECKED_OUT, true);
-  } catch (error) {
-    const allEntries = await readEntries().catch(() => []);
-    return buildResult(allEntries, userId, MESSAGES.CHECK_OUT_ERROR);
-  }
+  });
 }
 
 export async function updateEntryTimes(entryId, nextCheckInAt, nextCheckOutAt, userId = "default") {
-  try {
-    const allEntries = await readEntries();
+  return runWithFallback(userId, MESSAGES.UPDATE_ERROR, (allEntries) => {
     const userEntries = filterEntriesByUser(allEntries, userId);
     const targetEntry = userEntries.find((entry) => entry.id === entryId);
 
@@ -211,15 +212,11 @@ export async function updateEntryTimes(entryId, nextCheckInAt, nextCheckOutAt, u
     );
 
     return buildResult(updatedEntries, userId, MESSAGES.UPDATE_SUCCESS, true);
-  } catch (error) {
-    const allEntries = await readEntries().catch(() => []);
-    return buildResult(allEntries, userId, MESSAGES.UPDATE_ERROR);
-  }
+  });
 }
 
 export async function deleteEntry(entryId, userId = "default") {
-  try {
-    const allEntries = await readEntries();
+  return runWithFallback(userId, MESSAGES.DELETE_ERROR, async (allEntries) => {
     const userEntries = filterEntriesByUser(allEntries, userId);
     const targetEntry = userEntries.find((entry) => entry.id === entryId);
 
@@ -230,10 +227,7 @@ export async function deleteEntry(entryId, userId = "default") {
     await deleteEntryFromStorage(entryId);
     const updatedEntries = allEntries.filter((entry) => entry.id !== entryId);
     return buildResult(updatedEntries, userId, MESSAGES.DELETE_SUCCESS);
-  } catch (error) {
-    const allEntries = await readEntries().catch(() => []);
-    return buildResult(allEntries, userId, MESSAGES.DELETE_ERROR);
-  }
+  });
 }
 
 function normalizeHistoricRange(range) {

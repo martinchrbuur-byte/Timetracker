@@ -15,6 +15,14 @@ const PASSWORD_RULES = {
   digit: /\d/,
 };
 
+function normalizeEmail(value) {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function normalizePassword(value) {
+  return typeof value === "string" ? value : "";
+}
+
 function getSupabaseAuthConfig() {
   if (!isSupabasePersistenceEnabled()) {
     throw new Error("Supabase persistence is not enabled.");
@@ -38,6 +46,15 @@ function buildAuthHeaders(anonKey, accessToken = "") {
   }
 
   return headers;
+}
+
+async function authFetch(path, options = {}, accessToken = "") {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseAuthConfig();
+
+  return fetch(`${supabaseUrl}/auth/v1/${path}`, {
+    ...options,
+    headers: buildAuthHeaders(supabaseAnonKey, accessToken),
+  });
 }
 
 async function readErrorMessage(response) {
@@ -100,12 +117,10 @@ function validateNewPassword(newPassword, confirmPassword, currentPassword) {
 }
 
 async function verifyCurrentPasswordForSupabase(email, currentPassword) {
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseAuthConfig();
-  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const normalizedEmail = normalizeEmail(email);
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+  const response = await authFetch("token?grant_type=password", {
     method: "POST",
-    headers: buildAuthHeaders(supabaseAnonKey),
     body: JSON.stringify({
       email: normalizedEmail,
       password: currentPassword,
@@ -127,15 +142,16 @@ async function verifyCurrentPasswordForSupabase(email, currentPassword) {
 }
 
 async function updateSupabasePassword(accessToken, newPassword) {
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseAuthConfig();
-
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    method: "PUT",
-    headers: buildAuthHeaders(supabaseAnonKey, accessToken),
-    body: JSON.stringify({
-      password: newPassword,
-    }),
-  });
+  const response = await authFetch(
+    "user",
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        password: newPassword,
+      }),
+    },
+    accessToken
+  );
 
   await assertOk(response);
 }
@@ -160,8 +176,8 @@ function normalizeSessionFromAuthResponse(payload) {
 }
 
 export async function signUp(email, password) {
-  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
-  const normalizedPassword = typeof password === "string" ? password : "";
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPassword = normalizePassword(password);
 
   if (!normalizedEmail) {
     throw new Error("Email is required.");
@@ -171,11 +187,8 @@ export async function signUp(email, password) {
     throw new Error("Password must be at least 6 characters.");
   }
 
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseAuthConfig();
-
-  const response = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+  const response = await authFetch("signup", {
     method: "POST",
-    headers: buildAuthHeaders(supabaseAnonKey),
     body: JSON.stringify({
       email: normalizedEmail,
       password: normalizedPassword,
@@ -204,8 +217,8 @@ export async function signUp(email, password) {
 }
 
 export async function signIn(email, password) {
-  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
-  const normalizedPassword = typeof password === "string" ? password : "";
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPassword = normalizePassword(password);
 
   if (!normalizedEmail) {
     throw new Error("Email is required.");
@@ -215,11 +228,8 @@ export async function signIn(email, password) {
     throw new Error("Password is required.");
   }
 
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseAuthConfig();
-
-  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+  const response = await authFetch("token?grant_type=password", {
     method: "POST",
-    headers: buildAuthHeaders(supabaseAnonKey),
     body: JSON.stringify({
       email: normalizedEmail,
       password: normalizedPassword,
@@ -260,12 +270,13 @@ export async function signOut() {
     return;
   }
 
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseAuthConfig();
-
-  const response = await fetch(`${supabaseUrl}/auth/v1/logout`, {
-    method: "POST",
-    headers: buildAuthHeaders(supabaseAnonKey, session.access_token),
-  });
+  const response = await authFetch(
+    "logout",
+    {
+      method: "POST",
+    },
+    session.access_token
+  );
 
   await assertOk(response);
 }
@@ -279,12 +290,13 @@ export async function restoreSession() {
     };
   }
 
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseAuthConfig();
-
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    method: "GET",
-    headers: buildAuthHeaders(supabaseAnonKey, session.access_token),
-  });
+  const response = await authFetch(
+    "user",
+    {
+      method: "GET",
+    },
+    session.access_token
+  );
 
   if (!response.ok) {
     clearAuthSession();
@@ -310,9 +322,9 @@ export async function restoreSession() {
 }
 
 export async function changePassword(currentPassword, newPassword, confirmPassword) {
-  const normalizedCurrentPassword = typeof currentPassword === "string" ? currentPassword : "";
-  const normalizedNewPassword = typeof newPassword === "string" ? newPassword : "";
-  const normalizedConfirmPassword = typeof confirmPassword === "string" ? confirmPassword : "";
+  const normalizedCurrentPassword = normalizePassword(currentPassword);
+  const normalizedNewPassword = normalizePassword(newPassword);
+  const normalizedConfirmPassword = normalizePassword(confirmPassword);
 
   validateNewPassword(
     normalizedNewPassword,

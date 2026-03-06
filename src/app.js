@@ -17,17 +17,11 @@ import {
 } from "./services/authService.js";
 import {
   localDateTimeInputToIso,
+  toLocalDateInputValue,
   toLocalDateTimeInputValue,
 } from "./shared/dateTime.js";
 
 const READY_MESSAGE = "Ready.";
-
-function toLocalDateInputValue(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 const rootElement = document.getElementById("app");
 const viewRefs = buildMainView(rootElement);
@@ -51,6 +45,27 @@ let appState = {
   },
 };
 
+function patchState(nextState) {
+  appState = {
+    ...appState,
+    ...nextState,
+  };
+}
+
+function patchStateAndRender(nextState) {
+  patchState(nextState);
+  render();
+}
+
+function requireAuth(message) {
+  if (appState.isAuthenticated && appState.currentUserId) {
+    return true;
+  }
+
+  patchStateAndRender({ message });
+  return false;
+}
+
 function render() {
   appState = {
     ...appState,
@@ -64,12 +79,11 @@ function render() {
 }
 
 function applyResult(result) {
-  appState = {
-    ...appState,
+  patchState({
     entries: result.entries,
     activeEntry: result.activeEntry,
     message: result.message,
-  };
+  });
   render();
 }
 
@@ -185,12 +199,7 @@ async function initialize() {
 }
 
 async function handleCheckIn() {
-  if (!appState.isAuthenticated || !appState.currentUserId) {
-    appState = {
-      ...appState,
-      message: "You must be signed in to check in.",
-    };
-    render();
+  if (!requireAuth("You must be signed in to check in.")) {
     return;
   }
 
@@ -198,12 +207,7 @@ async function handleCheckIn() {
 }
 
 async function handleCheckOut() {
-  if (!appState.isAuthenticated || !appState.currentUserId) {
-    appState = {
-      ...appState,
-      message: "You must be signed in to check out.",
-    };
-    render();
+  if (!requireAuth("You must be signed in to check out.")) {
     return;
   }
 
@@ -211,12 +215,7 @@ async function handleCheckOut() {
 }
 
 async function handleEditSave() {
-  if (!appState.isAuthenticated || !appState.currentUserId) {
-    appState = {
-      ...appState,
-      message: "You must be signed in to edit entries.",
-    };
-    render();
+  if (!requireAuth("You must be signed in to edit entries.")) {
     return;
   }
 
@@ -225,11 +224,9 @@ async function handleEditSave() {
   const checkOutIso = localDateTimeInputToIso(viewRefs.editCheckOutInput.value);
 
   if (!checkInIso) {
-    appState = {
-      ...appState,
+    patchStateAndRender({
       message: "Check-in is required and must be valid.",
-    };
-    render();
+    });
     return;
   }
 
@@ -242,12 +239,7 @@ async function handleEditSave() {
 }
 
 async function handleEditDelete() {
-  if (!appState.isAuthenticated || !appState.currentUserId) {
-    appState = {
-      ...appState,
-      message: "You must be signed in to edit entries.",
-    };
-    render();
+  if (!requireAuth("You must be signed in to edit entries.")) {
     return;
   }
 
@@ -299,12 +291,7 @@ function handleSheetKeydown(event) {
 }
 
 async function handleChangePasswordSave() {
-  if (!appState.isAuthenticated || !appState.currentUserId) {
-    appState = {
-      ...appState,
-      message: "You must be signed in to change password.",
-    };
-    render();
+  if (!requireAuth("You must be signed in to change password.")) {
     return;
   }
 
@@ -315,27 +302,24 @@ async function handleChangePasswordSave() {
   try {
     const result = await changePassword(currentPassword, nextPassword, confirmPassword);
 
-    appState = {
-      ...appState,
+    patchState({
       message: result.message,
-    };
+    });
 
     closePasswordSheet();
     render();
   } catch (error) {
-    appState = {
-      ...appState,
+    patchState({
       message: `Password change failed: ${error.message}`,
-    };
+    });
     render();
   }
 }
 
 function setDayOverviewMode(mode) {
-  appState = {
-    ...appState,
+  patchState({
     dayOverviewMode: mode,
-  };
+  });
   render();
 }
 
@@ -353,11 +337,10 @@ function handleOverviewHistoricDateChange(event) {
     return;
   }
 
-  appState = {
-    ...appState,
+  patchState({
     dayOverviewDateISO: nextDate,
     dayOverviewMode: "historic",
-  };
+  });
   render();
 }
 
@@ -372,11 +355,10 @@ function handleOverviewRangeClick(event) {
     return;
   }
 
-  appState = {
-    ...appState,
+  patchState({
     dayOverviewMode: "historic",
     dayOverviewHistoricRange: range,
-  };
+  });
   render();
 }
 
@@ -398,26 +380,23 @@ async function handleOverviewCopyClick() {
   const clipboardText = buildHistoricOverviewClipboardText(appState.historicOverview);
 
   if (!clipboardText) {
-    appState = {
-      ...appState,
+    patchState({
       message: "Nothing to copy for this period.",
-    };
+    });
     render();
     return;
   }
 
   try {
     await navigator.clipboard.writeText(clipboardText);
-    appState = {
-      ...appState,
+    patchState({
       message: "Historic overview copied.",
-    };
+    });
     render();
   } catch (error) {
-    appState = {
-      ...appState,
+    patchState({
       message: "Copy failed. Select and copy manually.",
-    };
+    });
     render();
   }
 }

@@ -520,47 +520,41 @@ export function clearPasswordCredential(userId) {
   savePasswordCredentialRecords(records);
 }
 
-export async function loadEntriesFromStorage() {
+async function runPersistenceRead(supabaseReader, localReader) {
   if (isSupabasePersistenceEnabled()) {
-    return loadEntriesFromSupabase();
+    return supabaseReader();
   }
 
-  return loadEntriesFromLocalStorage();
+  return localReader();
+}
+
+async function runPersistenceWrite(supabaseWriter, localWriter, payload) {
+  if (isSupabasePersistenceEnabled()) {
+    await supabaseWriter(payload);
+    return;
+  }
+
+  localWriter(payload);
+}
+
+export async function loadEntriesFromStorage() {
+  return runPersistenceRead(loadEntriesFromSupabase, loadEntriesFromLocalStorage);
 }
 
 export async function saveEntriesToStorage(entries) {
-  if (isSupabasePersistenceEnabled()) {
-    await saveEntriesToSupabase(entries);
-    return;
-  }
-
-  saveEntriesToLocalStorage(entries);
+  await runPersistenceWrite(saveEntriesToSupabase, saveEntriesToLocalStorage, entries);
 }
 
 export async function deleteEntryFromStorage(entryId) {
-  if (isSupabasePersistenceEnabled()) {
-    await deleteEntryFromSupabase(entryId);
-    return;
-  }
-
-  deleteEntryFromLocalStorage(entryId);
+  await runPersistenceWrite(deleteEntryFromSupabase, deleteEntryFromLocalStorage, entryId);
 }
 
 export async function loadUsersFromStorage() {
-  if (isSupabasePersistenceEnabled()) {
-    return loadUsersFromSupabase();
-  }
-
-  return loadUsersFromLocalStorage();
+  return runPersistenceRead(loadUsersFromSupabase, loadUsersFromLocalStorage);
 }
 
 export async function saveUsersToStorage(users) {
-  if (isSupabasePersistenceEnabled()) {
-    await saveUsersToSupabase(users);
-    return;
-  }
-
-  saveUsersToLocalStorage(users);
+  await runPersistenceWrite(saveUsersToSupabase, saveUsersToLocalStorage, users);
 }
 
 export function saveAuthSession(session) {

@@ -3,16 +3,11 @@ import {
   formatDateTime,
   formatDuration,
   formatTimeOnly,
+  getRangeBounds,
+  isSameLocalDay,
+  parseLocalDateKey,
   toTimestamp,
 } from "../shared/dateTime.js";
-
-function isSameLocalDay(leftDate, rightDate) {
-  return (
-    leftDate.getFullYear() === rightDate.getFullYear() &&
-    leftDate.getMonth() === rightDate.getMonth() &&
-    leftDate.getDate() === rightDate.getDate()
-  );
-}
 
 function formatMinutesToLabel(totalMinutes) {
   const hours = Math.floor(totalMinutes / 60);
@@ -20,55 +15,11 @@ function formatMinutesToLabel(totalMinutes) {
   return `${hours}h ${minutes}m`;
 }
 
-function parseDateInputValue(value) {
-  if (typeof value !== "string" || value.length !== 10) {
-    return null;
-  }
-
-  const [year, month, day] = value.split("-").map((part) => Number(part));
-  if (!year || !month || !day) {
-    return null;
-  }
-
-  return new Date(year, month - 1, day);
-}
-
-function getWeekStart(date) {
-  const cloned = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const dayOfWeek = cloned.getDay();
-  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  cloned.setDate(cloned.getDate() + diffToMonday);
-  return cloned;
-}
-
-function getWeekEnd(date) {
-  const start = getWeekStart(date);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  return end;
-}
-
-function isInRange(entryDate, targetDate, range) {
-  if (range === "year") {
-    return entryDate.getFullYear() === targetDate.getFullYear();
-  }
-
-  if (range === "month") {
-    return (
-      entryDate.getFullYear() === targetDate.getFullYear() &&
-      entryDate.getMonth() === targetDate.getMonth()
-    );
-  }
-
-  const weekStart = getWeekStart(targetDate);
-  const weekEnd = getWeekEnd(targetDate);
-  return entryDate >= weekStart && entryDate <= weekEnd;
-}
-
 function buildDayOverview(entries, activeEntry, mode, dayOverviewDateISO, dayOverviewHistoricRange) {
   const now = new Date();
-  const targetDate = mode === "historic" ? parseDateInputValue(dayOverviewDateISO) || now : now;
+  const targetDate = mode === "historic" ? parseLocalDateKey(dayOverviewDateISO) || now : now;
   const range = mode === "historic" ? dayOverviewHistoricRange : "day";
+  const rangeBounds = mode === "historic" ? getRangeBounds(dayOverviewDateISO, range) : null;
 
   const dayEntries = entries.filter((entry) => {
     const entryDate = new Date(entry.checkInAt);
@@ -76,7 +27,11 @@ function buildDayOverview(entries, activeEntry, mode, dayOverviewDateISO, dayOve
       return isSameLocalDay(entryDate, targetDate);
     }
 
-    return isInRange(entryDate, targetDate, range);
+    if (!rangeBounds) {
+      return false;
+    }
+
+    return entryDate >= rangeBounds.start && entryDate <= rangeBounds.end;
   });
 
   const sessionCount = dayEntries.length;
@@ -121,10 +76,10 @@ function buildDayOverview(entries, activeEntry, mode, dayOverviewDateISO, dayOve
       ? `${targetDate.getFullYear()}`
       : range === "month"
         ? targetDate.toLocaleDateString(undefined, { month: "short", year: "numeric" })
-        : `${getWeekStart(targetDate).toLocaleDateString(undefined, {
+        : `${(rangeBounds?.start || targetDate).toLocaleDateString(undefined, {
             month: "short",
             day: "numeric",
-          })} - ${getWeekEnd(targetDate).toLocaleDateString(undefined, {
+          })} - ${(rangeBounds?.end || targetDate).toLocaleDateString(undefined, {
             month: "short",
             day: "numeric",
           })}`;
