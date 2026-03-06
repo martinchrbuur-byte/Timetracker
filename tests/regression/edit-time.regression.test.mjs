@@ -4,6 +4,7 @@ import {
   checkIn,
   checkOut,
   deleteEntry,
+  getInitialState,
   updateEntryTimes,
 } from "../../src/services/timeEntryService.js";
 import { STORAGE_KEY } from "../../src/services/storageService.js";
@@ -201,6 +202,10 @@ test("10) deleteEntry removes selected user session", async () => {
   assert.equal(result.message, "Session deleted successfully.");
   assert.equal(result.entries.length, 1);
   assert.equal(result.entries[0].id, "b");
+
+  const reloadedState = await getInitialState("default");
+  assert.equal(reloadedState.entries.length, 1);
+  assert.equal(reloadedState.entries[0].id, "b");
 });
 
 test("11) localDateTimeInputToIso parses localized date-time text", () => {

@@ -238,6 +238,7 @@ export function renderTrackerState(refs, state) {
   refs.authSignUpButton.hidden = isAuthenticated;
   refs.authSignOutButton.hidden = !isAuthenticated;
   refs.quickSignOutButton.hidden = !isAuthenticated;
+  refs.accountSettingsButton.hidden = !isAuthenticated;
   refs.authStatus.textContent = isAuthenticated
     ? state.message || `Signed in as ${state.authEmail || "user"}.`
     : state.message || "Signed out.";
@@ -248,6 +249,7 @@ export function renderTrackerState(refs, state) {
 
   if (!isAuthenticated) {
     refs.editSheet.hidden = true;
+    refs.passwordSheet.hidden = true;
     return;
   }
 

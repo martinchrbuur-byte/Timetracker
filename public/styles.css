@@ -73,6 +73,12 @@ h2 {
   margin-bottom: 0;
 }
 
+.status-panel__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 p {
   margin: 0;
 }
@@ -564,6 +570,10 @@ p {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+.sheet-actions--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 @keyframes card-in {

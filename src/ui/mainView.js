@@ -7,6 +7,7 @@ const VIEW_SELECTORS = {
   authSignUpButton: "#auth-signup-btn",
   authSignOutButton: "#auth-signout-btn",
   quickSignOutButton: "#quick-signout-btn",
+  accountSettingsButton: "#account-settings-btn",
   authStatus: "#auth-status",
   statusPanel: "#status-panel",
   dayOverviewPanel: "#day-overview-panel",
@@ -43,6 +44,13 @@ const VIEW_SELECTORS = {
   editDeleteButton: "#edit-delete-btn",
   editCancelButton: "#edit-cancel-btn",
   editSaveButton: "#edit-save-btn",
+  passwordSheet: "#password-sheet",
+  passwordSheetBackdrop: "#password-sheet-backdrop",
+  passwordCurrentInput: "#password-current",
+  passwordNewInput: "#password-new",
+  passwordConfirmInput: "#password-confirm",
+  passwordCancelButton: "#password-cancel-btn",
+  passwordSaveButton: "#password-save-btn",
 };
 
 function queryViewRefs(rootElement) {
@@ -80,7 +88,10 @@ export function buildMainView(rootElement) {
     <section id="status-panel" class="panel" aria-labelledby="status-title">
       <div class="status-panel__header">
         <h2 id="status-title">Current Status</h2>
-        <button id="quick-signout-btn" class="btn btn-secondary btn-compact" type="button">Sign Out</button>
+        <div class="status-panel__actions">
+          <button id="account-settings-btn" class="btn btn-secondary btn-compact" type="button">Account</button>
+          <button id="quick-signout-btn" class="btn btn-secondary btn-compact" type="button">Sign Out</button>
+        </div>
       </div>
       <div id="status-label" class="status-label inactive">Checked Out</div>
       <p id="status-meta" class="status-meta">No active session.</p>
@@ -223,6 +234,49 @@ export function buildMainView(rootElement) {
           <button id="edit-delete-btn" class="btn btn-secondary" type="button">Delete</button>
           <button id="edit-cancel-btn" class="btn btn-secondary" type="button">Cancel</button>
           <button id="edit-save-btn" class="btn btn-primary" type="button">Save</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="password-sheet" class="edit-sheet" hidden>
+      <div id="password-sheet-backdrop" class="edit-sheet-backdrop" aria-hidden="true"></div>
+      <section
+        class="edit-sheet-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="password-sheet-title"
+      >
+        <h2 id="password-sheet-title">Change Password</h2>
+
+        <label class="field-label" for="password-current">Current Password</label>
+        <input
+          id="password-current"
+          class="field-input"
+          type="password"
+          autocomplete="current-password"
+        />
+
+        <label class="field-label" for="password-new">New Password</label>
+        <input
+          id="password-new"
+          class="field-input"
+          type="password"
+          autocomplete="new-password"
+        />
+
+        <label class="field-label" for="password-confirm">Confirm New Password</label>
+        <input
+          id="password-confirm"
+          class="field-input"
+          type="password"
+          autocomplete="new-password"
+        />
+
+        <p class="field-help">Use at least 8 characters with at least one letter and one number.</p>
+
+        <div class="sheet-actions sheet-actions--two">
+          <button id="password-cancel-btn" class="btn btn-secondary" type="button">Cancel</button>
+          <button id="password-save-btn" class="btn btn-primary" type="button">Save Password</button>
         </div>
       </section>
     </div>

@@ -9,8 +9,12 @@ import { getAppConfig, isSupabasePersistenceEnabled } from "../config/appConfig.
 export const STORAGE_KEY = "workHours.entries.v1";
 export const USERS_STORAGE_KEY = "workHours.users.v1";
 export const AUTH_SESSION_STORAGE_KEY = "workHours.auth.session.v1";
+export const PASSWORD_CREDENTIALS_STORAGE_KEY = "workHours.auth.passwords.v1";
 const SUPABASE_TABLE = "time_entries";
 const SUPABASE_USERS_TABLE = "tracker_users";
+const PASSWORD_HASH_ALGO = "PBKDF2-SHA256";
+const PASSWORD_HASH_ITERATIONS = 50000;
+const PASSWORD_HASH_LENGTH_BITS = 256;
 
 const ERROR_CODES = {
   COLUMN_UNDEFINED: "42703",
@@ -165,6 +169,22 @@ async function saveEntriesToSupabase(entries) {
   }
 }
 
+async function deleteEntryFromSupabase(entryId) {
+  const normalizedEntryId = typeof entryId === "string" ? entryId.trim() : "";
+  if (!normalizedEntryId) {
+    return;
+  }
+
+  const encodedEntryId = encodeURIComponent(normalizedEntryId);
+
+  await supabaseRequest(`${SUPABASE_TABLE}?id=eq.${encodedEntryId}`, {
+    method: "DELETE",
+    headers: {
+      Prefer: "return=minimal",
+    },
+  });
+}
+
 async function loadUsersFromSupabase() {
   let rows = [];
 
@@ -230,6 +250,17 @@ function loadEntriesFromLocalStorage() {
 
 function saveEntriesToLocalStorage(entries) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+
+function deleteEntryFromLocalStorage(entryId) {
+  const normalizedEntryId = typeof entryId === "string" ? entryId.trim() : "";
+  if (!normalizedEntryId) {
+    return;
+  }
+
+  const entries = loadEntriesFromLocalStorage();
+  const updatedEntries = entries.filter((entry) => entry.id !== normalizedEntryId);
+  saveEntriesToLocalStorage(updatedEntries);
 }
 
 function loadUsersFromLocalStorage() {
@@ -302,6 +333,193 @@ function clearAuthSessionFromLocalStorage() {
   localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
 }
 
+function bytesToHex(bytes) {
+  return Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function hexToBytes(hexValue) {
+  if (typeof hexValue !== "string" || hexValue.length % 2 !== 0) {
+    return null;
+  }
+
+  const bytes = new Uint8Array(hexValue.length / 2);
+
+  for (let index = 0; index < bytes.length; index += 1) {
+    const pair = hexValue.slice(index * 2, index * 2 + 2);
+    const parsed = Number.parseInt(pair, 16);
+
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+
+    bytes[index] = parsed;
+  }
+
+  return bytes;
+}
+
+function getCryptoInterface() {
+  const cryptoApi = globalThis.crypto;
+
+  if (!cryptoApi?.subtle || typeof cryptoApi.getRandomValues !== "function") {
+    throw new Error("Web Crypto API is unavailable.");
+  }
+
+  return cryptoApi;
+}
+
+async function derivePasswordHash(password, saltBytes, iterations) {
+  const normalizedPassword = typeof password === "string" ? password : "";
+  const cryptoApi = getCryptoInterface();
+  const passwordBytes = new TextEncoder().encode(normalizedPassword);
+
+  const importedKey = await cryptoApi.subtle.importKey(
+    "raw",
+    passwordBytes,
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+
+  const derivedBits = await cryptoApi.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      hash: "SHA-256",
+      salt: saltBytes,
+      iterations,
+    },
+    importedKey,
+    PASSWORD_HASH_LENGTH_BITS
+  );
+
+  return new Uint8Array(derivedBits);
+}
+
+function loadPasswordCredentialRecords() {
+  try {
+    const raw = localStorage.getItem(PASSWORD_CREDENTIALS_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+
+    return parsed;
+  } catch (error) {
+    return {};
+  }
+}
+
+function savePasswordCredentialRecords(records) {
+  localStorage.setItem(PASSWORD_CREDENTIALS_STORAGE_KEY, JSON.stringify(records));
+}
+
+function isPasswordCredentialRecord(record) {
+  return Boolean(
+    record &&
+      typeof record === "object" &&
+      record.algorithm === PASSWORD_HASH_ALGO &&
+      typeof record.iterations === "number" &&
+      record.iterations > 0 &&
+      typeof record.saltHex === "string" &&
+      record.saltHex.length > 0 &&
+      typeof record.hashHex === "string" &&
+      record.hashHex.length > 0
+  );
+}
+
+export function loadPasswordCredential(userId) {
+  const normalizedUserId = typeof userId === "string" ? userId.trim() : "";
+  if (!normalizedUserId) {
+    return null;
+  }
+
+  const records = loadPasswordCredentialRecords();
+  const record = records[normalizedUserId];
+  return isPasswordCredentialRecord(record) ? record : null;
+}
+
+export async function savePasswordCredential(userId, password) {
+  const normalizedUserId = typeof userId === "string" ? userId.trim() : "";
+  const normalizedPassword = typeof password === "string" ? password : "";
+
+  if (!normalizedUserId || !normalizedPassword) {
+    return;
+  }
+
+  const cryptoApi = getCryptoInterface();
+  const saltBytes = cryptoApi.getRandomValues(new Uint8Array(16));
+  const hashBytes = await derivePasswordHash(
+    normalizedPassword,
+    saltBytes,
+    PASSWORD_HASH_ITERATIONS
+  );
+
+  const records = loadPasswordCredentialRecords();
+  records[normalizedUserId] = {
+    algorithm: PASSWORD_HASH_ALGO,
+    iterations: PASSWORD_HASH_ITERATIONS,
+    saltHex: bytesToHex(saltBytes),
+    hashHex: bytesToHex(hashBytes),
+  };
+
+  savePasswordCredentialRecords(records);
+}
+
+export async function verifyPasswordCredential(userId, password) {
+  const normalizedUserId = typeof userId === "string" ? userId.trim() : "";
+  const normalizedPassword = typeof password === "string" ? password : "";
+
+  if (!normalizedUserId || !normalizedPassword) {
+    return false;
+  }
+
+  const record = loadPasswordCredential(normalizedUserId);
+  if (!record) {
+    return false;
+  }
+
+  const saltBytes = hexToBytes(record.saltHex);
+  const expectedHashBytes = hexToBytes(record.hashHex);
+
+  if (!saltBytes || !expectedHashBytes) {
+    return false;
+  }
+
+  const actualHashBytes = await derivePasswordHash(normalizedPassword, saltBytes, record.iterations);
+  if (actualHashBytes.length !== expectedHashBytes.length) {
+    return false;
+  }
+
+  let mismatch = 0;
+
+  for (let index = 0; index < actualHashBytes.length; index += 1) {
+    mismatch |= actualHashBytes[index] ^ expectedHashBytes[index];
+  }
+
+  return mismatch === 0;
+}
+
+export function clearPasswordCredential(userId) {
+  const normalizedUserId = typeof userId === "string" ? userId.trim() : "";
+  if (!normalizedUserId) {
+    return;
+  }
+
+  const records = loadPasswordCredentialRecords();
+  if (!records[normalizedUserId]) {
+    return;
+  }
+
+  delete records[normalizedUserId];
+  savePasswordCredentialRecords(records);
+}
+
 export async function loadEntriesFromStorage() {
   if (isSupabasePersistenceEnabled()) {
     return loadEntriesFromSupabase();
@@ -317,6 +535,15 @@ export async function saveEntriesToStorage(entries) {
   }
 
   saveEntriesToLocalStorage(entries);
+}
+
+export async function deleteEntryFromStorage(entryId) {
+  if (isSupabasePersistenceEnabled()) {
+    await deleteEntryFromSupabase(entryId);
+    return;
+  }
+
+  deleteEntryFromLocalStorage(entryId);
 }
 
 export async function loadUsersFromStorage() {

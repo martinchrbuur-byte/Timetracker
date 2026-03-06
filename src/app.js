@@ -8,7 +8,13 @@ import {
   getInitialState,
   updateEntryTimes,
 } from "./services/timeEntryService.js";
-import { restoreSession, signIn, signOut, signUp } from "./services/authService.js";
+import {
+  changePassword,
+  restoreSession,
+  signIn,
+  signOut,
+  signUp,
+} from "./services/authService.js";
 import {
   localDateTimeInputToIso,
   toLocalDateTimeInputValue,
@@ -85,6 +91,21 @@ function closeEditSheet() {
   viewRefs.editEntryIdInput.value = "";
   viewRefs.editCheckInInput.value = "";
   viewRefs.editCheckOutInput.value = "";
+}
+
+function openPasswordSheet() {
+  viewRefs.passwordCurrentInput.value = "";
+  viewRefs.passwordNewInput.value = "";
+  viewRefs.passwordConfirmInput.value = "";
+  viewRefs.passwordSheet.hidden = false;
+  viewRefs.passwordCurrentInput.focus();
+}
+
+function closePasswordSheet() {
+  viewRefs.passwordSheet.hidden = true;
+  viewRefs.passwordCurrentInput.value = "";
+  viewRefs.passwordNewInput.value = "";
+  viewRefs.passwordConfirmInput.value = "";
 }
 
 async function refreshEntriesForCurrentUser() {
@@ -269,6 +290,44 @@ function handleActiveEditClick() {
 function handleSheetKeydown(event) {
   if (event.key === "Escape" && !viewRefs.editSheet.hidden) {
     closeEditSheet();
+    return;
+  }
+
+  if (event.key === "Escape" && !viewRefs.passwordSheet.hidden) {
+    closePasswordSheet();
+  }
+}
+
+async function handleChangePasswordSave() {
+  if (!appState.isAuthenticated || !appState.currentUserId) {
+    appState = {
+      ...appState,
+      message: "You must be signed in to change password.",
+    };
+    render();
+    return;
+  }
+
+  const currentPassword = viewRefs.passwordCurrentInput.value;
+  const nextPassword = viewRefs.passwordNewInput.value;
+  const confirmPassword = viewRefs.passwordConfirmInput.value;
+
+  try {
+    const result = await changePassword(currentPassword, nextPassword, confirmPassword);
+
+    appState = {
+      ...appState,
+      message: result.message,
+    };
+
+    closePasswordSheet();
+    render();
+  } catch (error) {
+    appState = {
+      ...appState,
+      message: `Password change failed: ${error.message}`,
+    };
+    render();
   }
 }
 
@@ -442,6 +501,7 @@ async function handleSignOut() {
       message: "Signed out.",
     };
     closeEditSheet();
+    closePasswordSheet();
     render();
   } catch (error) {
     appState = {
@@ -460,6 +520,10 @@ viewRefs.editCancelButton.addEventListener("click", closeEditSheet);
 viewRefs.editSheetBackdrop.addEventListener("click", closeEditSheet);
 viewRefs.editDeleteButton.addEventListener("click", handleEditDelete);
 viewRefs.editSaveButton.addEventListener("click", handleEditSave);
+viewRefs.accountSettingsButton.addEventListener("click", openPasswordSheet);
+viewRefs.passwordCancelButton.addEventListener("click", closePasswordSheet);
+viewRefs.passwordSheetBackdrop.addEventListener("click", closePasswordSheet);
+viewRefs.passwordSaveButton.addEventListener("click", handleChangePasswordSave);
 viewRefs.dayOverviewTodayButton.addEventListener("click", handleOverviewTodayClick);
 viewRefs.dayOverviewHistoricButton.addEventListener("click", handleOverviewHistoricClick);
 viewRefs.dayOverviewHistoricDate.addEventListener("change", handleOverviewHistoricDateChange);

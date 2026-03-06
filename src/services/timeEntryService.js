@@ -1,5 +1,6 @@
 import { createTimeEntry } from "../models/timeEntry.js";
 import {
+  deleteEntryFromStorage,
   loadEntriesFromStorage,
   saveEntriesToStorage,
 } from "./storageService.js";
@@ -226,8 +227,9 @@ export async function deleteEntry(entryId, userId = "default") {
       return buildResult(allEntries, userId, MESSAGES.DELETE_NOT_FOUND);
     }
 
+    await deleteEntryFromStorage(entryId);
     const updatedEntries = allEntries.filter((entry) => entry.id !== entryId);
-    return buildResult(updatedEntries, userId, MESSAGES.DELETE_SUCCESS, true);
+    return buildResult(updatedEntries, userId, MESSAGES.DELETE_SUCCESS);
   } catch (error) {
     const allEntries = await readEntries().catch(() => []);
     return buildResult(allEntries, userId, MESSAGES.DELETE_ERROR);

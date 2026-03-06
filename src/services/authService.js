@@ -1,10 +1,19 @@
 import { getAppConfig, isSupabasePersistenceEnabled } from "../config/appConfig.js";
 import {
+  clearPasswordCredential,
   clearAuthSession,
   loadAuthSession,
+  savePasswordCredential,
   saveAuthSession,
   upsertAuthUserProfile,
+  verifyPasswordCredential,
 } from "./storageService.js";
+
+const PASSWORD_RULES = {
+  minLength: 8,
+  letter: /[A-Za-z]/,
+  digit: /\d/,
+};
 
 function getSupabaseAuthConfig() {
   if (!isSupabasePersistenceEnabled()) {
@@ -47,6 +56,68 @@ async function assertOk(response) {
 
   const message = await readErrorMessage(response);
   throw new Error(message || `Supabase auth request failed with status ${response.status}`);
+}
+
+function normalizeAuthError(error, fallbackMessage) {
+  const message = error?.message || "";
+
+  if (/invalid login credentials|invalid credentials|invalid grant/i.test(message)) {
+    return fallbackMessage;
+  }
+
+  return message || fallbackMessage;
+}
+
+function validateNewPassword(newPassword, confirmPassword, currentPassword) {
+  if (!currentPassword) {
+    throw new Error("Current password is required.");
+  }
+
+  if (!newPassword) {
+    throw new Error("New password is required.");
+  }
+
+  if (newPassword.length < PASSWORD_RULES.minLength) {
+    throw new Error("New password must be at least 8 characters.");
+  }
+
+  if (!PASSWORD_RULES.letter.test(newPassword) || !PASSWORD_RULES.digit.test(newPassword)) {
+    throw new Error("New password must contain at least one letter and one number.");
+  }
+
+  if (newPassword !== confirmPassword) {
+    throw new Error("New password and confirmation do not match.");
+  }
+
+  if (currentPassword === newPassword) {
+    throw new Error("New password must be different from current password.");
+  }
+}
+
+async function verifyCurrentPasswordForSupabase(email, currentPassword) {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseAuthConfig();
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: buildAuthHeaders(supabaseAnonKey),
+    body: JSON.stringify({
+      email,
+      password: currentPassword,
+    }),
+  });
+
+  await assertOk(response);
+  const payload = await response.json();
+  const session = normalizeSessionFromAuthResponse(payload);
+
+  if (!session) {
+    throw new Error("Current password is incorrect.");
+  }
+
+  return {
+    session,
+    user: payload.user || null,
+  };
 }
 
 function normalizeSessionFromAuthResponse(payload) {
@@ -99,6 +170,7 @@ export async function signUp(email, password) {
   }
 
   await upsertAuthUserProfile(payload.user.id, normalizedEmail);
+  await savePasswordCredential(payload.user.id, normalizedPassword).catch(() => {});
 
   const session = normalizeSessionFromAuthResponse(payload);
   if (session) {
@@ -143,6 +215,9 @@ export async function signIn(email, password) {
   }
 
   saveAuthSession(session);
+  if (payload?.user?.id) {
+    await savePasswordCredential(payload.user.id, normalizedPassword).catch(() => {});
+  }
   await upsertAuthUserProfile(payload?.user?.id || "", payload?.user?.email || normalizedEmail).catch(
     () => {}
   );
@@ -155,7 +230,11 @@ export async function signIn(email, password) {
 
 export async function signOut() {
   const session = loadAuthSession();
+  const userId = session?.user?.id || "";
   clearAuthSession();
+  if (userId) {
+    clearPasswordCredential(userId);
+  }
 
   if (!session?.access_token) {
     return;
@@ -207,5 +286,72 @@ export async function restoreSession() {
   return {
     user,
     session: restoredSession,
+  };
+}
+
+export async function changePassword(currentPassword, newPassword, confirmPassword) {
+  const normalizedCurrentPassword = typeof currentPassword === "string" ? currentPassword : "";
+  const normalizedNewPassword = typeof newPassword === "string" ? newPassword : "";
+  const normalizedConfirmPassword = typeof confirmPassword === "string" ? confirmPassword : "";
+
+  validateNewPassword(
+    normalizedNewPassword,
+    normalizedConfirmPassword,
+    normalizedCurrentPassword
+  );
+
+  const currentSession = loadAuthSession();
+  const userId = currentSession?.user?.id || "";
+  const authEmail = currentSession?.user?.email || "";
+
+  if (!userId) {
+    throw new Error("You must be signed in to change password.");
+  }
+
+  if (isSupabasePersistenceEnabled()) {
+    if (!authEmail) {
+      throw new Error("Cannot change password: account email is missing.");
+    }
+
+    try {
+      const { session: reauthSession, user } = await verifyCurrentPasswordForSupabase(
+        authEmail,
+        normalizedCurrentPassword
+      );
+      const { supabaseUrl, supabaseAnonKey } = getSupabaseAuthConfig();
+
+      const updateResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        method: "PUT",
+        headers: buildAuthHeaders(supabaseAnonKey, reauthSession.access_token),
+        body: JSON.stringify({
+          password: normalizedNewPassword,
+        }),
+      });
+
+      await assertOk(updateResponse);
+
+      saveAuthSession({
+        ...reauthSession,
+        user: user || currentSession.user,
+      });
+      await savePasswordCredential(userId, normalizedNewPassword).catch(() => {});
+
+      return {
+        message: "Password changed successfully.",
+      };
+    } catch (error) {
+      throw new Error(normalizeAuthError(error, "Current password is incorrect."));
+    }
+  }
+
+  const hasValidCurrentPassword = await verifyPasswordCredential(userId, normalizedCurrentPassword);
+  if (!hasValidCurrentPassword) {
+    throw new Error("Current password is incorrect.");
+  }
+
+  await savePasswordCredential(userId, normalizedNewPassword);
+
+  return {
+    message: "Password changed successfully.",
   };
 }
