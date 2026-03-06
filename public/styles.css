@@ -482,6 +482,20 @@ p {
   margin-top: 1rem;
 }
 
+.actions--auth {
+  grid-template-columns: 1fr;
+}
+
+#auth-validation-message {
+  color: var(--warning);
+  min-height: 1.2rem;
+}
+
+#auth-loading-label {
+  color: var(--text-secondary);
+  min-height: 1.2rem;
+}
+
 .btn {
   min-height: 52px;
   padding: 0.7rem 1rem;
@@ -726,6 +740,10 @@ p {
 
   .actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .actions--auth {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .day-overview__historic-tools .day-overview__mode {

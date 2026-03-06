@@ -85,6 +85,24 @@ function normalizeAuthError(error, fallbackMessage) {
   return message || fallbackMessage;
 }
 
+function normalizeSignUpError(error) {
+  const message = error?.message || "";
+
+  if (/already registered|already exists|user already registered|email.*exists/i.test(message)) {
+    return "This email is already in use.";
+  }
+
+  if (/password/i.test(message) && /weak|least|length|digit|letter/i.test(message)) {
+    return "Password is too weak. Use at least 8 characters with one letter and one number.";
+  }
+
+  if (/network|failed to fetch|fetch/i.test(message)) {
+    return "Network error. Check your connection and try again.";
+  }
+
+  return message || "Sign-up failed.";
+}
+
 function isSupabaseReauthenticationRequiredError(error) {
   const message = error?.message || "";
   return /reauth|nonce|otp|secure password change/i.test(message);
@@ -183,20 +201,30 @@ export async function signUp(email, password) {
     throw new Error("Email is required.");
   }
 
-  if (normalizedPassword.length < 6) {
-    throw new Error("Password must be at least 6 characters.");
+  if (normalizedPassword.length < PASSWORD_RULES.minLength) {
+    throw new Error("Password must be at least 8 characters.");
   }
 
-  const response = await authFetch("signup", {
-    method: "POST",
-    body: JSON.stringify({
-      email: normalizedEmail,
-      password: normalizedPassword,
-    }),
-  });
+  if (!PASSWORD_RULES.letter.test(normalizedPassword) || !PASSWORD_RULES.digit.test(normalizedPassword)) {
+    throw new Error("Password must contain at least one letter and one number.");
+  }
 
-  await assertOk(response);
-  const payload = await response.json();
+  let payload = null;
+
+  try {
+    const response = await authFetch("signup", {
+      method: "POST",
+      body: JSON.stringify({
+        email: normalizedEmail,
+        password: normalizedPassword,
+      }),
+    });
+
+    await assertOk(response);
+    payload = await response.json();
+  } catch (error) {
+    throw new Error(normalizeSignUpError(error));
+  }
 
   if (!payload?.user?.id) {
     throw new Error("Sign up succeeded, but no user id was returned.");

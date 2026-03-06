@@ -30,6 +30,135 @@ import {
 
 const READY_MESSAGE = "Ready.";
 const THEME_STORAGE_KEY = "workHours.theme.v1";
+const AUTH_ROUTES = {
+  LANDING: "landing",
+  SIGN_UP: "signup",
+  SIGN_IN: "signin",
+  CONFIRMATION: "confirmation",
+};
+const CONFIRMATION_REDIRECT_DELAY_MS = 2200;
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_RULES = {
+  minLength: 8,
+  hasLetter: /[A-Za-z]/,
+  hasDigit: /\d/,
+};
+
+let confirmationRedirectTimerId = null;
+
+function normalizeAuthRoute(routeValue) {
+  if (
+    routeValue === AUTH_ROUTES.LANDING ||
+    routeValue === AUTH_ROUTES.SIGN_UP ||
+    routeValue === AUTH_ROUTES.SIGN_IN ||
+    routeValue === AUTH_ROUTES.CONFIRMATION
+  ) {
+    return routeValue;
+  }
+
+  return AUTH_ROUTES.LANDING;
+}
+
+function readAuthRouteFromHash() {
+  if (typeof window === "undefined") {
+    return AUTH_ROUTES.LANDING;
+  }
+
+  const hash = (window.location.hash || "").replace(/^#/, "").trim().toLowerCase();
+  if (!hash || hash === "app") {
+    return AUTH_ROUTES.LANDING;
+  }
+
+  return normalizeAuthRoute(hash);
+}
+
+function syncHashRoute({ isAuthenticated, authRoute, replace = false }) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const targetHash = isAuthenticated ? "#app" : `#${normalizeAuthRoute(authRoute)}`;
+  if (window.location.hash === targetHash) {
+    return;
+  }
+
+  if (replace && window.history && typeof window.history.replaceState === "function") {
+    window.history.replaceState(null, "", targetHash);
+    return;
+  }
+
+  window.location.hash = targetHash;
+}
+
+function clearConfirmationRedirectTimer() {
+  if (confirmationRedirectTimerId !== null) {
+    clearTimeout(confirmationRedirectTimerId);
+    confirmationRedirectTimerId = null;
+  }
+}
+
+function mapSignUpErrorMessage(error) {
+  const message = error?.message || "";
+
+  if (/already registered|already exists|user already registered|email.*exists/i.test(message)) {
+    return "This email is already in use. Try signing in instead.";
+  }
+
+  if (/network|failed to fetch|fetch/i.test(message)) {
+    return "Network error. Check your connection and try again.";
+  }
+
+  if (/password/i.test(message) && /weak|least|length|digit|letter/i.test(message)) {
+    return "Password is too weak. Use at least 8 characters with one letter and one number.";
+  }
+
+  return message || "Unable to sign up right now.";
+}
+
+function validateSignUpInput(email, password, confirmPassword) {
+  if (!email) {
+    return "Email is required.";
+  }
+
+  if (!EMAIL_REGEX.test(email)) {
+    return "Please enter a valid email address.";
+  }
+
+  if (!password) {
+    return "Password is required.";
+  }
+
+  if (password.length < PASSWORD_RULES.minLength) {
+    return "Password must be at least 8 characters.";
+  }
+
+  if (!PASSWORD_RULES.hasLetter.test(password) || !PASSWORD_RULES.hasDigit.test(password)) {
+    return "Password must include at least one letter and one number.";
+  }
+
+  if (password !== confirmPassword) {
+    return "Password and confirm password do not match.";
+  }
+
+  return "";
+}
+
+function validateSignInInput(email, password) {
+  if (!email) {
+    return "Email is required.";
+  }
+
+  if (!EMAIL_REGEX.test(email)) {
+    return "Please enter a valid email address.";
+  }
+
+  if (!password) {
+    return "Password is required.";
+  }
+
+  return "";
+}
 
 function getPreferredThemeMode() {
   try {
@@ -77,6 +206,15 @@ let appState = {
   activeEntry: null,
   themeMode: getPreferredThemeMode(),
   syncStatus: getSyncStatus(),
+  authRoute: AUTH_ROUTES.LANDING,
+  authUi: {
+    isSubmitting: false,
+    validationMessage: "",
+    successMessage: "",
+    loadingLabel: "",
+  },
+  confirmationTitle: "Check your email",
+  confirmationMessage: "",
   message: READY_MESSAGE,
   dayOverviewMode: "today",
   dayOverviewDateISO: toLocalDateInputValue(),
@@ -114,6 +252,27 @@ function patchState(nextState) {
     ...appState,
     ...nextState,
   };
+}
+
+function setAuthRoute(nextRoute, { replaceHash = false } = {}) {
+  const normalizedRoute = normalizeAuthRoute(nextRoute);
+
+  patchState({
+    authRoute: normalizedRoute,
+    authUi: {
+      ...appState.authUi,
+      validationMessage: "",
+      successMessage: "",
+      loadingLabel: "",
+      isSubmitting: false,
+    },
+  });
+
+  syncHashRoute({
+    isAuthenticated: appState.isAuthenticated,
+    authRoute: normalizedRoute,
+    replace: replaceHash,
+  });
 }
 
 function patchStateAndRender(nextState) {
@@ -251,6 +410,7 @@ async function initialize() {
 
     const todayDateISO = toLocalDateInputValue();
     const initialThemeMode = getPreferredThemeMode();
+    const initialAuthRoute = restoredUserId ? AUTH_ROUTES.LANDING : readAuthRouteFromHash();
 
     appState = {
       isAuthenticated: Boolean(restoredUserId),
@@ -261,6 +421,15 @@ async function initialize() {
       activeEntry: initialState.activeEntry,
       themeMode: initialThemeMode,
       syncStatus: getSyncStatus(),
+      authRoute: normalizeAuthRoute(initialAuthRoute),
+      authUi: {
+        isSubmitting: false,
+        validationMessage: "",
+        successMessage: "",
+        loadingLabel: "",
+      },
+      confirmationTitle: "Check your email",
+      confirmationMessage: "",
       message: startupMessage,
       dayOverviewMode: "today",
       dayOverviewDateISO: todayDateISO,
@@ -269,7 +438,13 @@ async function initialize() {
 
     viewRefs.dayOverviewHistoricDate.value = todayDateISO;
     viewRefs.dayOverviewHistoricDate.max = todayDateISO;
-  applyThemeMode(initialThemeMode);
+    applyThemeMode(initialThemeMode);
+
+    syncHashRoute({
+      isAuthenticated: Boolean(restoredUserId),
+      authRoute: initialAuthRoute,
+      replace: true,
+    });
 
     render();
     await syncPendingOperations();
@@ -514,10 +689,13 @@ function readAuthFormValues() {
   return {
     email: viewRefs.authEmailInput.value.trim().toLowerCase(),
     password: viewRefs.authPasswordInput.value,
+    confirmPassword: viewRefs.authConfirmPasswordInput.value,
   };
 }
 
 async function applyAuthenticatedUser(user, message) {
+  clearConfirmationRedirectTimer();
+
   const userId = user?.id || null;
   const email = user?.email || "";
 
@@ -527,56 +705,214 @@ async function applyAuthenticatedUser(user, message) {
     authUserId: userId,
     authEmail: email,
     currentUserId: userId || "default",
+    authRoute: AUTH_ROUTES.LANDING,
+    authUi: {
+      isSubmitting: false,
+      validationMessage: "",
+      successMessage: "",
+      loadingLabel: "",
+    },
+    confirmationMessage: "",
     message,
   };
 
   viewRefs.authPasswordInput.value = "";
+  viewRefs.authConfirmPasswordInput.value = "";
+  syncHashRoute({ isAuthenticated: true, authRoute: AUTH_ROUTES.LANDING, replace: true });
   await refreshEntriesForCurrentUser();
 }
 
+function scheduleConfirmationRedirectToSignIn() {
+  clearConfirmationRedirectTimer();
+  confirmationRedirectTimerId = setTimeout(() => {
+    setAuthRoute(AUTH_ROUTES.SIGN_IN, { replaceHash: true });
+    render();
+    viewRefs.authEmailInput.focus();
+  }, CONFIRMATION_REDIRECT_DELAY_MS);
+}
+
+function setAuthSubmittingState(isSubmitting, loadingLabel = "") {
+  patchState({
+    authUi: {
+      ...appState.authUi,
+      isSubmitting,
+      loadingLabel,
+      validationMessage: isSubmitting ? "" : appState.authUi.validationMessage,
+    },
+  });
+  render();
+}
+
+function handleOpenSignUp() {
+  clearConfirmationRedirectTimer();
+  setAuthRoute(AUTH_ROUTES.SIGN_UP);
+  render();
+  viewRefs.authEmailInput.focus();
+}
+
+function handleOpenSignIn() {
+  clearConfirmationRedirectTimer();
+  setAuthRoute(AUTH_ROUTES.SIGN_IN);
+  render();
+  viewRefs.authEmailInput.focus();
+}
+
+function handleBackToLanding() {
+  clearConfirmationRedirectTimer();
+  setAuthRoute(AUTH_ROUTES.LANDING);
+  render();
+  viewRefs.landingCreateAccountButton.focus();
+}
+
+function handleConfirmationContinue() {
+  clearConfirmationRedirectTimer();
+  setAuthRoute(AUTH_ROUTES.SIGN_IN);
+  render();
+  viewRefs.authEmailInput.focus();
+}
+
 async function handleSignUp() {
+  const { email, password, confirmPassword } = readAuthFormValues();
+  const validationMessage = validateSignUpInput(email, password, confirmPassword);
+  if (validationMessage) {
+    patchState({
+      authUi: {
+        ...appState.authUi,
+        validationMessage,
+        successMessage: "",
+        loadingLabel: "",
+      },
+      message: `Sign-up failed: ${validationMessage}`,
+    });
+    render();
+    return;
+  }
+
   try {
-    const { email, password } = readAuthFormValues();
+    setAuthSubmittingState(true, "Creating account…");
     const result = await signUp(email, password);
 
     if (!result.session || !result.user?.id) {
-      appState = {
-        ...appState,
+      setAuthRoute(AUTH_ROUTES.CONFIRMATION);
+      patchState({
+        confirmationTitle: "Confirm your email",
+        confirmationMessage:
+          "Your account was created. Open the verification email, then continue to sign in.",
+        authUi: {
+          isSubmitting: false,
+          validationMessage: "",
+          successMessage: "Account created. Awaiting email confirmation.",
+          loadingLabel: "",
+        },
         message: "Sign-up successful. Verify your email, then sign in.",
-      };
+      });
       viewRefs.authPasswordInput.value = "";
+      viewRefs.authConfirmPasswordInput.value = "";
       render();
+      scheduleConfirmationRedirectToSignIn();
       return;
     }
 
-    await applyAuthenticatedUser(result.user, "Signed up successfully.");
+    await applyAuthenticatedUser(result.user, "Signed up successfully. Redirected to app home.");
   } catch (error) {
-    appState = {
-      ...appState,
-      message: `Sign-up failed: ${error.message}`,
-    };
+    const mappedMessage = mapSignUpErrorMessage(error);
+    patchState({
+      authUi: {
+        ...appState.authUi,
+        isSubmitting: false,
+        validationMessage: mappedMessage,
+        successMessage: "",
+        loadingLabel: "",
+      },
+      message: `Sign-up failed: ${mappedMessage}`,
+    });
     render();
+    return;
   }
+
+  patchState({
+    authUi: {
+      ...appState.authUi,
+      isSubmitting: false,
+      loadingLabel: "",
+    },
+  });
+  render();
+}
+
+function mapSignInErrorMessage(error) {
+  const message = error?.message || "";
+
+  if (/network|failed to fetch|fetch/i.test(message)) {
+    return "Network error. Check your connection and try again.";
+  }
+
+  return message || "Unable to sign in right now.";
 }
 
 async function handleSignIn() {
+  const { email, password } = readAuthFormValues();
+  const validationMessage = validateSignInInput(email, password);
+  if (validationMessage) {
+    patchState({
+      authUi: {
+        ...appState.authUi,
+        validationMessage,
+        successMessage: "",
+        loadingLabel: "",
+      },
+      message: `Sign-in failed: ${validationMessage}`,
+    });
+    render();
+    return;
+  }
+
   try {
-    const { email, password } = readAuthFormValues();
+    setAuthSubmittingState(true, "Signing in…");
     const result = await signIn(email, password);
 
     await applyAuthenticatedUser(result.user, "Signed in successfully.");
   } catch (error) {
-    appState = {
-      ...appState,
-      message: `Sign-in failed: ${error.message}`,
-    };
+    const mappedMessage = mapSignInErrorMessage(error);
+    patchState({
+      authUi: {
+        ...appState.authUi,
+        isSubmitting: false,
+        validationMessage: mappedMessage,
+        successMessage: "",
+        loadingLabel: "",
+      },
+      message: `Sign-in failed: ${mappedMessage}`,
+    });
     render();
+    return;
   }
+
+  patchState({
+    authUi: {
+      ...appState.authUi,
+      isSubmitting: false,
+      loadingLabel: "",
+    },
+  });
+  render();
+}
+
+function handleAuthRouteFromHash() {
+  if (appState.isAuthenticated) {
+    syncHashRoute({ isAuthenticated: true, authRoute: appState.authRoute, replace: true });
+    return;
+  }
+
+  const hashRoute = readAuthRouteFromHash();
+  setAuthRoute(hashRoute, { replaceHash: true });
+  render();
 }
 
 async function handleSignOut() {
   try {
     await signOut();
+    clearConfirmationRedirectTimer();
 
     appState = {
       ...appState,
@@ -586,11 +922,20 @@ async function handleSignOut() {
       currentUserId: "default",
       entries: [],
       activeEntry: null,
+      authRoute: AUTH_ROUTES.LANDING,
+      authUi: {
+        isSubmitting: false,
+        validationMessage: "",
+        successMessage: "",
+        loadingLabel: "",
+      },
+      confirmationMessage: "",
       syncStatus: getSyncStatus(),
       message: "Signed out.",
     };
     closeEditSheet();
     closePasswordSheet();
+    syncHashRoute({ isAuthenticated: false, authRoute: AUTH_ROUTES.LANDING, replace: true });
     render();
   } catch (error) {
     appState = {
@@ -603,6 +948,11 @@ async function handleSignOut() {
 
 viewRefs.checkInButton.addEventListener("click", handleCheckIn);
 viewRefs.checkOutButton.addEventListener("click", handleCheckOut);
+viewRefs.landingCreateAccountButton.addEventListener("click", handleOpenSignUp);
+viewRefs.landingSignInButton.addEventListener("click", handleOpenSignIn);
+viewRefs.authBackToLandingButton.addEventListener("click", handleBackToLanding);
+viewRefs.confirmationContinueButton.addEventListener("click", handleConfirmationContinue);
+viewRefs.confirmationBackToLandingButton.addEventListener("click", handleBackToLanding);
 viewRefs.historyBody.addEventListener("click", handleHistoryActionClick);
 viewRefs.editActiveButton.addEventListener("click", handleActiveEditClick);
 viewRefs.editCancelButton.addEventListener("click", closeEditSheet);
@@ -633,6 +983,7 @@ if (typeof window !== "undefined") {
   window.addEventListener("online", () => {
     void syncPendingOperations();
   });
+  window.addEventListener("hashchange", handleAuthRouteFromHash);
 }
 
 initialize();

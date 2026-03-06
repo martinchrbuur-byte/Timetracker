@@ -1,14 +1,29 @@
 const VIEW_SELECTORS = {
   trackerPanel: "#tracker-panel",
+  landingPanel: "#landing-panel",
+  landingCreateAccountButton: "#landing-create-account-btn",
+  landingSignInButton: "#landing-signin-btn",
   authPanel: "#auth-panel",
+  authFormTitle: "#auth-form-title",
+  authFormSubtitle: "#auth-form-subtitle",
   authEmailInput: "#auth-email",
   authPasswordInput: "#auth-password",
+  authConfirmPasswordInput: "#auth-confirm-password",
+  authValidationMessage: "#auth-validation-message",
+  authPasswordRules: "#auth-password-rules",
+  authLoadingLabel: "#auth-loading-label",
   authSignInButton: "#auth-signin-btn",
   authSignUpButton: "#auth-signup-btn",
+  authBackToLandingButton: "#auth-back-to-landing-btn",
   authSignOutButton: "#auth-signout-btn",
   quickSignOutButton: "#quick-signout-btn",
   accountSettingsButton: "#account-settings-btn",
   authStatus: "#auth-status",
+  confirmationPanel: "#confirmation-panel",
+  confirmationContinueButton: "#confirmation-continue-btn",
+  confirmationBackToLandingButton: "#confirmation-back-btn",
+  confirmationTitle: "#confirmation-title",
+  confirmationMessage: "#confirmation-message",
   statusPanel: "#status-panel",
   dayOverviewPanel: "#day-overview-panel",
   historyPanel: "#history-panel",
@@ -78,21 +93,61 @@ export function buildMainView(rootElement) {
       <p class="subtitle">Track check-in/check-out timestamps locally in your browser.</p>
     </section>
 
-    <section id="auth-panel" class="panel" aria-labelledby="auth-title">
-      <h2 id="auth-title">Account</h2>
+    <section id="landing-panel" class="panel" aria-labelledby="landing-title">
+      <h2 id="landing-title">Welcome</h2>
+      <p class="subtitle">Create an account to sync your tracked sessions across devices.</p>
+      <div class="actions actions--auth">
+        <button id="landing-create-account-btn" class="btn btn-primary" type="button">
+          Create account
+        </button>
+        <button id="landing-signin-btn" class="btn btn-secondary" type="button">
+          I already have an account
+        </button>
+      </div>
+    </section>
+
+    <section id="auth-panel" class="panel" aria-labelledby="auth-form-title">
+      <h2 id="auth-form-title">Create account</h2>
+      <p id="auth-form-subtitle" class="subtitle">Use a valid email and a strong password.</p>
       <label class="field-label" for="auth-email">Email</label>
       <input id="auth-email" class="field-input" type="email" autocomplete="email" />
 
       <label class="field-label" for="auth-password">Password</label>
-      <input id="auth-password" class="field-input" type="password" autocomplete="current-password" />
+      <input id="auth-password" class="field-input" type="password" autocomplete="new-password" />
 
-      <div class="actions">
+      <label class="field-label" for="auth-confirm-password">Confirm password</label>
+      <input
+        id="auth-confirm-password"
+        class="field-input"
+        type="password"
+        autocomplete="new-password"
+      />
+
+      <p id="auth-password-rules" class="field-help">
+        Minimum 8 characters, including at least one letter and one number.
+      </p>
+      <p id="auth-validation-message" class="status-meta" role="alert" aria-live="assertive"></p>
+      <p id="auth-loading-label" class="status-meta" role="status" aria-live="polite"></p>
+
+      <div class="actions actions--auth">
         <button id="auth-signin-btn" class="btn btn-primary" type="button">Sign In</button>
-        <button id="auth-signup-btn" class="btn btn-secondary" type="button">Sign Up</button>
+        <button id="auth-signup-btn" class="btn btn-primary" type="button">Sign Up</button>
+        <button id="auth-back-to-landing-btn" class="btn btn-secondary" type="button">Back</button>
         <button id="auth-signout-btn" class="btn btn-secondary" type="button">Sign Out</button>
       </div>
 
       <p id="auth-status" class="status-meta" role="status" aria-live="polite">Signed out.</p>
+    </section>
+
+    <section id="confirmation-panel" class="panel" aria-labelledby="confirmation-title">
+      <h2 id="confirmation-title">Check your email</h2>
+      <p id="confirmation-message" class="subtitle">
+        We sent a confirmation link. After verifying your email, continue to sign in.
+      </p>
+      <div class="actions actions--auth">
+        <button id="confirmation-continue-btn" class="btn btn-primary" type="button">Continue to sign in</button>
+        <button id="confirmation-back-btn" class="btn btn-secondary" type="button">Back to landing</button>
+      </div>
     </section>
 
     <section id="status-panel" class="panel" aria-labelledby="status-title">

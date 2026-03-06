@@ -2,8 +2,13 @@
   "name": "tr2-work-hours-tracker",
   "private": true,
   "type": "module",
+  "devDependencies": {
+    "@playwright/test": "^1.53.2"
+  },
   "scripts": {
     "test": "node --test",
-    "test:regression": "node --test tests/regression/**/*.test.mjs"
+    "test:regression": "node --test tests/regression/**/*.test.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
   }
 }

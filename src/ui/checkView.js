@@ -306,9 +306,39 @@ function renderHistoricAnalytics(refs, historicAnalytics, isTodayMode) {
 export function renderTrackerState(refs, state) {
   const isAuthenticated = Boolean(state.isAuthenticated);
   const isDarkTheme = state.themeMode === "dark";
+  const authRoute =
+    state.authRoute === "signup" || state.authRoute === "signin" || state.authRoute === "confirmation"
+      ? state.authRoute
+      : "landing";
+  const isSignUpRoute = authRoute === "signup";
+  const isSignInRoute = authRoute === "signin";
+  const isConfirmationRoute = authRoute === "confirmation";
+  const authUi = state.authUi || {};
+  const isAuthSubmitting = Boolean(authUi.isSubmitting);
 
-  refs.trackerPanel.hidden = isAuthenticated;
-  refs.authPanel.hidden = isAuthenticated;
+  refs.trackerPanel.hidden = isAuthenticated || authRoute !== "landing";
+  refs.landingPanel.hidden = isAuthenticated || authRoute !== "landing";
+  refs.authPanel.hidden = isAuthenticated || (!isSignUpRoute && !isSignInRoute);
+  refs.confirmationPanel.hidden = isAuthenticated || !isConfirmationRoute;
+
+  refs.authFormTitle.textContent = isSignUpRoute ? "Create account" : "Sign in";
+  refs.authFormSubtitle.textContent = isSignUpRoute
+    ? "Use a valid email and a strong password."
+    : "Enter your account email and password.";
+  refs.authConfirmPasswordInput.hidden = !isSignUpRoute;
+  refs.authConfirmPasswordInput.disabled = isAuthenticated || !isSignUpRoute || isAuthSubmitting;
+  refs.authPasswordInput.setAttribute("autocomplete", isSignUpRoute ? "new-password" : "current-password");
+  refs.authPasswordRules.hidden = !isSignUpRoute;
+  refs.authSignInButton.hidden = isAuthenticated || !isSignInRoute;
+  refs.authSignUpButton.hidden = isAuthenticated || !isSignUpRoute;
+  refs.authValidationMessage.textContent = authUi.validationMessage || "";
+  refs.authLoadingLabel.textContent = isAuthSubmitting
+    ? authUi.loadingLabel || "Working…"
+    : authUi.successMessage || "";
+  refs.authLoadingLabel.hidden = !refs.authLoadingLabel.textContent;
+  refs.authValidationMessage.hidden = !refs.authValidationMessage.textContent;
+  refs.confirmationTitle.textContent = state.confirmationTitle || "Check your email";
+  refs.confirmationMessage.textContent = state.confirmationMessage || "";
 
   refs.themeToggleButton.textContent = isDarkTheme ? "Light mode" : "Dark mode";
   refs.themeToggleButton.setAttribute("aria-pressed", String(isDarkTheme));
@@ -317,10 +347,12 @@ export function renderTrackerState(refs, state) {
     isDarkTheme ? "Switch to light mode" : "Switch to dark mode"
   );
 
-  refs.authEmailInput.disabled = isAuthenticated;
-  refs.authPasswordInput.disabled = isAuthenticated;
-  refs.authSignInButton.hidden = isAuthenticated;
-  refs.authSignUpButton.hidden = isAuthenticated;
+  refs.authEmailInput.disabled = isAuthenticated || isAuthSubmitting;
+  refs.authPasswordInput.disabled = isAuthenticated || isAuthSubmitting;
+  refs.authSignInButton.disabled = isAuthSubmitting;
+  refs.authSignUpButton.disabled = isAuthSubmitting;
+  refs.authBackToLandingButton.disabled = isAuthSubmitting;
+  refs.confirmationContinueButton.disabled = isAuthSubmitting;
   refs.authSignOutButton.hidden = !isAuthenticated;
   refs.quickSignOutButton.hidden = !isAuthenticated;
   refs.accountSettingsButton.hidden = !isAuthenticated;
