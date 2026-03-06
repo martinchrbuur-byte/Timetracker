@@ -2,6 +2,7 @@ import {
   formatDateOnly,
   formatDateTime,
   formatDuration,
+  formatTimeOnly,
   toTimestamp,
 } from "../shared/dateTime.js";
 
@@ -159,11 +160,11 @@ function buildHistoryRow(entry) {
         </div>
         <div class="session-row">
           <span class="session-label">Check In</span>
-          <span class="session-value">${formatDateTime(entry.checkInAt)}</span>
+          <span class="session-value">${formatTimeOnly(entry.checkInAt)}</span>
         </div>
         <div class="session-row">
           <span class="session-label">Check Out</span>
-          <span class="session-value">${formatDateTime(entry.checkOutAt)}</span>
+          <span class="session-value">${formatTimeOnly(entry.checkOutAt)}</span>
         </div>
         <div class="session-row">
           <span class="session-label">Duration</span>
@@ -190,6 +191,39 @@ function renderHistory(historyBody, entries) {
   }
 
   historyBody.innerHTML = entries.map(buildHistoryRow).join("");
+}
+
+function buildHistoricOverviewRow(row) {
+  return `
+    <article class="day-overview__row" role="listitem">
+      <span class="day-overview__row-date">${row.dateLabel}</span>
+      <span class="day-overview__row-time">${row.startLabel} - ${row.endLabel}</span>
+    </article>
+  `;
+}
+
+function renderHistoricOverview(refs, historicOverview, isTodayMode) {
+  if (isTodayMode) {
+    refs.dayOverviewRows.innerHTML = "";
+    refs.dayOverviewCopyButton.disabled = true;
+    refs.dayOverviewPeriodLabel.textContent = "Period overview";
+    return;
+  }
+
+  const rows = historicOverview?.rows || [];
+  const periodStartLabel = historicOverview?.periodStartLabel || "--";
+  const periodEndLabel = historicOverview?.periodEndLabel || "--";
+
+  refs.dayOverviewPeriodLabel.textContent = `${periodStartLabel} - ${periodEndLabel}`;
+
+  if (rows.length === 0) {
+    refs.dayOverviewRows.innerHTML = `<p class="day-overview__rows-empty">No sessions in this period.</p>`;
+    refs.dayOverviewCopyButton.disabled = true;
+    return;
+  }
+
+  refs.dayOverviewRows.innerHTML = rows.map(buildHistoricOverviewRow).join("");
+  refs.dayOverviewCopyButton.disabled = false;
 }
 
 export function renderTrackerState(refs, state) {
@@ -259,6 +293,8 @@ export function renderTrackerState(refs, state) {
   refs.dayOverviewRangeYearButton.setAttribute("aria-selected", String(dayOverview.historicRange === "year"));
   refs.dayOverviewHistoricDate.hidden = dayOverview.isTodayMode;
   refs.dayOverviewHistoricDate.value = state.dayOverviewDateISO;
+
+  renderHistoricOverview(refs, state.historicOverview, dayOverview.isTodayMode);
 
   refs.message.textContent = state.message;
 

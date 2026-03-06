@@ -3,7 +3,14 @@ import {
   loadEntriesFromStorage,
   saveEntriesToStorage,
 } from "./storageService.js";
-import { isValidDateTimeString, toTimestamp } from "../shared/dateTime.js";
+import {
+  formatDateOnly,
+  formatTimeOnly,
+  getRangeBounds,
+  isValidDateTimeString,
+  toLocalDateKey,
+  toTimestamp,
+} from "../shared/dateTime.js";
 
 const MESSAGES = {
   READY: "Ready.",
@@ -25,6 +32,8 @@ const MESSAGES = {
   ACTIVE_CONFLICT: "Cannot set active session: another active session already exists.",
   OVERLAP_CONFLICT: "Cannot save: session overlaps another entry.",
 };
+
+const HISTORIC_RANGES = ["week", "month", "year"];
 
 function sortEntriesByLatestCheckIn(entries) {
   return [...entries].sort(
@@ -223,4 +232,121 @@ export async function deleteEntry(entryId, userId = "default") {
     const allEntries = await readEntries().catch(() => []);
     return buildResult(allEntries, userId, MESSAGES.DELETE_ERROR);
   }
+}
+
+function normalizeHistoricRange(range) {
+  return HISTORIC_RANGES.includes(range) ? range : "week";
+}
+
+function toStartOfLocalDayTimestamp(localDate) {
+  return new Date(
+    localDate.getFullYear(),
+    localDate.getMonth(),
+    localDate.getDate(),
+    0,
+    0,
+    0,
+    0
+  ).getTime();
+}
+
+function toEndOfLocalDayTimestamp(localDate) {
+  return new Date(
+    localDate.getFullYear(),
+    localDate.getMonth(),
+    localDate.getDate(),
+    23,
+    59,
+    59,
+    999
+  ).getTime();
+}
+
+function getResolvedEndTimestamp(entry, nowTimestamp, nowDateKey) {
+  if (entry.checkOutAt) {
+    return toTimestamp(entry.checkOutAt);
+  }
+
+  const entryDateKey = toLocalDateKey(entry.checkInAt);
+  if (entryDateKey === nowDateKey) {
+    return nowTimestamp;
+  }
+
+  const entryDate = new Date(toTimestamp(entry.checkInAt));
+  return toEndOfLocalDayTimestamp(entryDate);
+}
+
+export function buildHistoricStartEndOverview(entries, dateKey, range, nowIso = new Date().toISOString()) {
+  const normalizedRange = normalizeHistoricRange(range);
+  const bounds = getRangeBounds(dateKey, normalizedRange);
+
+  if (!bounds) {
+    return {
+      range: normalizedRange,
+      rows: [],
+      periodStartLabel: "--",
+      periodEndLabel: "--",
+    };
+  }
+
+  const nowTimestamp = toTimestamp(nowIso);
+  const nowDateKey = toLocalDateKey(nowIso);
+  const rangeStartTimestamp = toStartOfLocalDayTimestamp(bounds.start);
+  const rangeEndTimestamp = toEndOfLocalDayTimestamp(bounds.end);
+  const rowsByDate = new Map();
+
+  entries.forEach((entry) => {
+    const startTimestamp = toTimestamp(entry.checkInAt);
+    if (!Number.isFinite(startTimestamp)) {
+      return;
+    }
+
+    const startDateKey = toLocalDateKey(entry.checkInAt);
+    const startDate = new Date(startTimestamp);
+    const dayStartTimestamp = toStartOfLocalDayTimestamp(startDate);
+
+    if (dayStartTimestamp < rangeStartTimestamp || dayStartTimestamp > rangeEndTimestamp) {
+      return;
+    }
+
+    const endTimestamp = getResolvedEndTimestamp(entry, nowTimestamp, nowDateKey);
+    if (!Number.isFinite(endTimestamp)) {
+      return;
+    }
+
+    const existing = rowsByDate.get(startDateKey) || {
+      dateKey: startDateKey,
+      firstStartTimestamp: startTimestamp,
+      lastEndTimestamp: endTimestamp,
+      sessionCount: 0,
+    };
+
+    existing.firstStartTimestamp = Math.min(existing.firstStartTimestamp, startTimestamp);
+    existing.lastEndTimestamp = Math.max(existing.lastEndTimestamp, endTimestamp);
+    existing.sessionCount += 1;
+
+    rowsByDate.set(startDateKey, existing);
+  });
+
+  const sortedRows = Array.from(rowsByDate.values())
+    .sort((leftRow, rightRow) => toTimestamp(leftRow.dateKey) - toTimestamp(rightRow.dateKey))
+    .map((row) => ({
+      dateKey: row.dateKey,
+      dateLabel: formatDateOnly(row.firstStartTimestamp),
+      startAt: new Date(row.firstStartTimestamp).toISOString(),
+      endAt: new Date(row.lastEndTimestamp).toISOString(),
+      startLabel: formatTimeOnly(row.firstStartTimestamp),
+      endLabel: formatTimeOnly(row.lastEndTimestamp),
+      sessionCount: row.sessionCount,
+    }));
+
+  const periodStartLabel = formatDateOnly(bounds.start.toISOString());
+  const periodEndLabel = formatDateOnly(bounds.end.toISOString());
+
+  return {
+    range: normalizedRange,
+    rows: sortedRows,
+    periodStartLabel,
+    periodEndLabel,
+  };
 }

@@ -1,6 +1,7 @@
 import { buildMainView } from "./ui/mainView.js";
 import { renderTrackerState } from "./ui/checkView.js";
 import {
+  buildHistoricStartEndOverview,
   checkIn,
   checkOut,
   deleteEntry,
@@ -36,9 +37,23 @@ let appState = {
   dayOverviewMode: "today",
   dayOverviewDateISO: toLocalDateInputValue(),
   dayOverviewHistoricRange: "week",
+  historicOverview: {
+    range: "week",
+    rows: [],
+    periodStartLabel: "--",
+    periodEndLabel: "--",
+  },
 };
 
 function render() {
+  appState = {
+    ...appState,
+    historicOverview: buildHistoricStartEndOverview(
+      appState.entries,
+      appState.dayOverviewDateISO,
+      appState.dayOverviewHistoricRange
+    ),
+  };
   renderTrackerState(viewRefs, appState);
 }
 
@@ -306,6 +321,48 @@ function handleOverviewRangeClick(event) {
   render();
 }
 
+function buildHistoricOverviewClipboardText(historicOverview) {
+  const rows = historicOverview?.rows || [];
+  if (rows.length === 0) {
+    return "";
+  }
+
+  const lines = ["Date\tStart\tEnd"];
+  rows.forEach((row) => {
+    lines.push(`${row.dateLabel}\t${row.startLabel}\t${row.endLabel}`);
+  });
+
+  return lines.join("\n");
+}
+
+async function handleOverviewCopyClick() {
+  const clipboardText = buildHistoricOverviewClipboardText(appState.historicOverview);
+
+  if (!clipboardText) {
+    appState = {
+      ...appState,
+      message: "Nothing to copy for this period.",
+    };
+    render();
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(clipboardText);
+    appState = {
+      ...appState,
+      message: "Historic overview copied.",
+    };
+    render();
+  } catch (error) {
+    appState = {
+      ...appState,
+      message: "Copy failed. Select and copy manually.",
+    };
+    render();
+  }
+}
+
 function readAuthFormValues() {
   return {
     email: viewRefs.authEmailInput.value.trim().toLowerCase(),
@@ -407,6 +464,7 @@ viewRefs.dayOverviewTodayButton.addEventListener("click", handleOverviewTodayCli
 viewRefs.dayOverviewHistoricButton.addEventListener("click", handleOverviewHistoricClick);
 viewRefs.dayOverviewHistoricDate.addEventListener("change", handleOverviewHistoricDateChange);
 viewRefs.dayOverviewRangeGroup.addEventListener("click", handleOverviewRangeClick);
+viewRefs.dayOverviewCopyButton.addEventListener("click", handleOverviewCopyClick);
 viewRefs.authSignInButton.addEventListener("click", handleSignIn);
 viewRefs.authSignUpButton.addEventListener("click", handleSignUp);
 viewRefs.authSignOutButton.addEventListener("click", handleSignOut);

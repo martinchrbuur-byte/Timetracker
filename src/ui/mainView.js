@@ -23,6 +23,9 @@ const VIEW_SELECTORS = {
   dayOverviewRangeWeekButton: "#day-overview-range-week",
   dayOverviewRangeMonthButton: "#day-overview-range-month",
   dayOverviewRangeYearButton: "#day-overview-range-year",
+  dayOverviewPeriodLabel: "#day-overview-period-label",
+  dayOverviewCopyButton: "#day-overview-copy-btn",
+  dayOverviewRows: "#day-overview-rows",
   dayOverviewTotal: "#day-overview-total",
   dayOverviewTotalLabel: "#day-overview-total-label",
   dayOverviewSessions: "#day-overview-sessions",
@@ -171,6 +174,16 @@ export function buildMainView(rootElement) {
           >
             Year
           </button>
+        </div>
+
+        <div class="day-overview__period">
+          <div class="day-overview__period-header">
+            <p id="day-overview-period-label" class="day-overview__period-label">Period overview</p>
+            <button id="day-overview-copy-btn" class="btn btn-secondary btn-compact" type="button">
+              Copy
+            </button>
+          </div>
+          <div id="day-overview-rows" class="day-overview__rows" role="list" aria-label="Historic start and end times"></div>
         </div>
       </div>
 

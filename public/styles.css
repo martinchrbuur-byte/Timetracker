@@ -216,8 +216,68 @@ p {
   margin-top: 0.72rem;
 }
 
+.day-overview__period {
+  margin-top: 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0.58rem;
+}
+
+.day-overview__period-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.day-overview__period-label {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.day-overview__rows {
+  margin-top: 0.5rem;
+  display: grid;
+  gap: 0.3rem;
+  max-height: 170px;
+  overflow: auto;
+}
+
+.day-overview__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.32rem 0.45rem;
+  background: var(--surface);
+}
+
+.day-overview__row-date {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.day-overview__row-time {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.day-overview__rows-empty {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  text-align: center;
+  margin: 0;
+  padding: 0.5rem;
+}
+
 .day-overview__historic-tools .day-overview__mode {
   width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .day-overview__historic-tools .overview-tab {
@@ -529,11 +589,11 @@ p {
 @keyframes sheet-up {
   from {
     opacity: 0;
-    transform: translateY(26px);
+    transform: translate(-50%, calc(-50% + 26px));
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, -50%);
   }
 }
 

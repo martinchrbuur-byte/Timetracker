@@ -111,3 +111,42 @@ Many individual workers and small teams need a fast way to track working time bu
 - UXR-2: Maintain clear visual hierarchy with heading, status, actions, then history.
 - UXR-3: Use color + text labels (not color alone) to communicate state.
 - UXR-4: Support narrow viewports down to 320px width without horizontal overflow.
+
+---
+
+# Step 5 — Historic Period Overview Revision (Product Owner)
+
+## Updated Functional Requirements
+- FR-13: In Historic mode, provide a period overview list with one row per day.
+- FR-14: Each row must show the local date, earliest check-in time, and latest check-out time for that day.
+- FR-15: Support Week, Month, and Year period filters based on an anchor date.
+- FR-16: Provide a Copy action that copies Date/Start/End as tab-separated text for external applications.
+- FR-17: Disable Copy and show an empty-state message when no rows exist for the selected period.
+
+## Updated Non-Functional Requirements
+- NFR-6: Historic period recalculation remains responsive for datasets up to 5,000 entries.
+- NFR-7: Day grouping and period boundaries must use local time consistently.
+- NFR-8: Feature must not change existing persistence contracts or entry invariants.
+
+## Updated User Stories (INVEST)
+- US-6: As a worker, I want a week/month/year overview of daily start and end times so I can quickly understand my working pattern.
+- US-7: As a worker, I want to copy historic Date/Start/End rows so I can paste them into spreadsheet or payroll tools.
+
+## Acceptance Criteria
+- AC-6: Given Historic mode, when the user selects Week/Month/Year, the overview rows update to that period immediately.
+- AC-7: Given multiple sessions on the same day, then the day row shows the earliest check-in and latest check-out.
+- AC-8: Given no sessions in period, then the UI shows “No sessions in this period.” and Copy is disabled.
+- AC-9: Given period rows exist, when Copy is clicked, then clipboard text includes a header and one Date/Start/End row per day.
+- AC-10: Existing rules (single active session, overlap prevention, valid check-out ordering) remain unchanged.
+
+## Constraints and Dependencies
+- Keep implementation in current single-page layout and existing Day Overview section.
+- Reuse existing design tokens and component classes in `public/styles.css`.
+- Use service-layer aggregation to keep business logic out of rendering modules.
+- Clipboard copy depends on browser Clipboard API support.
+
+## Integration Notes
+- Business aggregation is implemented in `src/services/timeEntryService.js` via `buildHistoricStartEndOverview(...)`.
+- Date/range helpers are centralized in `src/shared/dateTime.js` (`toLocalDateKey`, `getRangeBounds`).
+- UI structure and refs are extended in `src/ui/mainView.js`; rendering stays in `src/ui/checkView.js`.
+- Persistence layer in `src/services/storageService.js` remains unchanged and provider-agnostic (localStorage/Supabase).
