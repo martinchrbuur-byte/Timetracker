@@ -68,6 +68,11 @@ function normalizeAuthError(error, fallbackMessage) {
   return message || fallbackMessage;
 }
 
+function isSupabaseReauthenticationRequiredError(error) {
+  const message = error?.message || "";
+  return /reauth|nonce|otp|secure password change/i.test(message);
+}
+
 function validateNewPassword(newPassword, confirmPassword, currentPassword) {
   if (!currentPassword) {
     throw new Error("Current password is required.");
@@ -96,12 +101,13 @@ function validateNewPassword(newPassword, confirmPassword, currentPassword) {
 
 async function verifyCurrentPasswordForSupabase(email, currentPassword) {
   const { supabaseUrl, supabaseAnonKey } = getSupabaseAuthConfig();
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
   const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: buildAuthHeaders(supabaseAnonKey),
     body: JSON.stringify({
-      email,
+      email: normalizedEmail,
       password: currentPassword,
     }),
   });
@@ -118,6 +124,20 @@ async function verifyCurrentPasswordForSupabase(email, currentPassword) {
     session,
     user: payload.user || null,
   };
+}
+
+async function updateSupabasePassword(accessToken, newPassword) {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseAuthConfig();
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    method: "PUT",
+    headers: buildAuthHeaders(supabaseAnonKey, accessToken),
+    body: JSON.stringify({
+      password: newPassword,
+    }),
+  });
+
+  await assertOk(response);
 }
 
 function normalizeSessionFromAuthResponse(payload) {
@@ -318,17 +338,7 @@ export async function changePassword(currentPassword, newPassword, confirmPasswo
         authEmail,
         normalizedCurrentPassword
       );
-      const { supabaseUrl, supabaseAnonKey } = getSupabaseAuthConfig();
-
-      const updateResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-        method: "PUT",
-        headers: buildAuthHeaders(supabaseAnonKey, reauthSession.access_token),
-        body: JSON.stringify({
-          password: normalizedNewPassword,
-        }),
-      });
-
-      await assertOk(updateResponse);
+      await updateSupabasePassword(reauthSession.access_token, normalizedNewPassword);
 
       saveAuthSession({
         ...reauthSession,
@@ -340,6 +350,12 @@ export async function changePassword(currentPassword, newPassword, confirmPasswo
         message: "Password changed successfully.",
       };
     } catch (error) {
+      if (isSupabaseReauthenticationRequiredError(error)) {
+        throw new Error(
+          "Supabase requires reauthentication for password change. Sign out and sign in again, then retry."
+        );
+      }
+
       throw new Error(normalizeAuthError(error, "Current password is incorrect."));
     }
   }

@@ -27,6 +27,16 @@ function createMemoryStorage() {
   };
 }
 
+function createJsonResponse(status, payload) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    async json() {
+      return payload;
+    },
+  };
+}
+
 beforeEach(() => {
   globalThis.localStorage = createMemoryStorage();
   globalThis.window = {
@@ -85,4 +95,80 @@ test("changePassword updates hashed password on success", async () => {
   assert.equal(result.message, "Password changed successfully.");
   assert.equal(await verifyPasswordCredential("user-1", "Newpass123"), true);
   assert.equal(await verifyPasswordCredential("user-1", "Oldpass123"), false);
+});
+
+test("changePassword in supabase mode calls token and update endpoints", async () => {
+  globalThis.window.TRACKER_CONFIG.persistence = {
+    provider: "supabase",
+    supabaseUrl: "https://example.supabase.co",
+    supabaseAnonKey: "anon-key",
+  };
+
+  const fetchCalls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    fetchCalls.push({ url, options });
+
+    if (String(url).includes("/auth/v1/token?grant_type=password")) {
+      return createJsonResponse(200, {
+        access_token: "reauth-token",
+        refresh_token: "refresh-token",
+        token_type: "bearer",
+        user: {
+          id: "user-1",
+          email: "user@example.com",
+        },
+      });
+    }
+
+    if (String(url).includes("/auth/v1/user")) {
+      return createJsonResponse(200, {
+        user: {
+          id: "user-1",
+          email: "user@example.com",
+        },
+      });
+    }
+
+    return createJsonResponse(404, {
+      message: "Not found",
+    });
+  };
+
+  const result = await changePassword("Oldpass123", "Newpass123", "Newpass123");
+
+  assert.equal(result.message, "Password changed successfully.");
+  assert.equal(fetchCalls.length, 2);
+  assert.ok(fetchCalls[0].url.includes("/auth/v1/token?grant_type=password"));
+  assert.ok(fetchCalls[1].url.includes("/auth/v1/user"));
+});
+
+test("changePassword in supabase mode surfaces reauthentication requirement", async () => {
+  globalThis.window.TRACKER_CONFIG.persistence = {
+    provider: "supabase",
+    supabaseUrl: "https://example.supabase.co",
+    supabaseAnonKey: "anon-key",
+  };
+
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("/auth/v1/token?grant_type=password")) {
+      return createJsonResponse(200, {
+        access_token: "reauth-token",
+        refresh_token: "refresh-token",
+        token_type: "bearer",
+        user: {
+          id: "user-1",
+          email: "user@example.com",
+        },
+      });
+    }
+
+    return createJsonResponse(400, {
+      message: "Secure password change requires reauthentication nonce",
+    });
+  };
+
+  await assert.rejects(
+    () => changePassword("Oldpass123", "Newpass123", "Newpass123"),
+    /requires reauthentication/i
+  );
 });
