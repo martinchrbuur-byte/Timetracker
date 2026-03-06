@@ -228,6 +228,7 @@ export function renderTrackerState(refs, state) {
   refs.editActiveButton.disabled = !isActive;
   refs.editActiveButton.dataset.entryId = isActive ? state.activeEntry.id : "";
 
+  refs.dayOverviewTitle.textContent = dayOverview.isTodayMode ? "Day overview" : "Historic overview";
   refs.dayOverviewDate.textContent = dayOverview.dateLabel;
   refs.dayOverviewTotal.textContent = dayOverview.totalLabel;
   refs.dayOverviewTotalLabel.textContent = dayOverview.totalWorkedLabel;

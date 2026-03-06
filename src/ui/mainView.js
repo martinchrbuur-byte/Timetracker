@@ -15,6 +15,7 @@ const VIEW_SELECTORS = {
   statusLabel: "#status-label",
   statusMeta: "#status-meta",
   editActiveButton: "#edit-active-btn",
+  dayOverviewTitle: "#day-overview-title",
   dayOverviewDate: "#day-overview-date",
   dayOverviewTodayButton: "#day-overview-today-btn",
   dayOverviewHistoricButton: "#day-overview-historic-btn",
