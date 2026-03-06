@@ -12,6 +12,7 @@ export const AUTH_SESSION_STORAGE_KEY = "workHours.auth.session.v1";
 export const PASSWORD_CREDENTIALS_STORAGE_KEY = "workHours.auth.passwords.v1";
 const SUPABASE_TABLE = "time_entries";
 const SUPABASE_USERS_TABLE = "tracker_users";
+const SOFT_DELETED_USER_ID = "__deleted__";
 const PASSWORD_HASH_ALGO = "PBKDF2-SHA256";
 const PASSWORD_HASH_ITERATIONS = 50000;
 const PASSWORD_HASH_LENGTH_BITS = 256;
@@ -177,11 +178,33 @@ async function deleteEntryFromSupabase(entryId) {
 
   const encodedEntryId = encodeURIComponent(normalizedEntryId);
 
-  await supabaseRequest(`${SUPABASE_TABLE}?id=eq.${encodedEntryId}`, {
+  const response = await supabaseRequest(`${SUPABASE_TABLE}?id=eq.${encodedEntryId}`, {
     method: "DELETE",
+    headers: {
+      Prefer: "return=representation",
+    },
+  });
+
+  let deletedRows = [];
+
+  try {
+    deletedRows = await response.json();
+  } catch (error) {
+    deletedRows = [];
+  }
+
+  if (Array.isArray(deletedRows) && deletedRows.length > 0) {
+    return;
+  }
+
+  await supabaseRequest(`${SUPABASE_TABLE}?id=eq.${encodedEntryId}`, {
+    method: "PATCH",
     headers: {
       Prefer: "return=minimal",
     },
+    body: JSON.stringify({
+      user_id: SOFT_DELETED_USER_ID,
+    }),
   });
 }
 
