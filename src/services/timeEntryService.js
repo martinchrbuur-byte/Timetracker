@@ -79,7 +79,7 @@ async function buildResult(allEntries, userId, message, shouldPersist = false) {
 async function runWithFallback(userId, fallbackMessage, operation) {
   try {
     const allEntries = await readEntries();
-    return operation(allEntries);
+    return await operation(allEntries);
   } catch (error) {
     const allEntries = await readEntries().catch(() => []);
     return buildResult(allEntries, userId, fallbackMessage);

@@ -61,6 +61,8 @@ alter table public.time_entries enable row level security;
 
 drop policy if exists "anon_read_time_entries" on public.time_entries;
 drop policy if exists "anon_write_time_entries" on public.time_entries;
+drop policy if exists "anon_update_time_entries" on public.time_entries;
+drop policy if exists "anon_delete_time_entries" on public.time_entries;
 
 create policy "anon_read_time_entries"
 on public.time_entries
@@ -80,6 +82,12 @@ for update
 to anon
 using (true)
 with check (true);
+
+create policy "anon_delete_time_entries"
+on public.time_entries
+for delete
+to anon
+using (true);
 
 alter table public.tracker_users enable row level security;
 
@@ -137,4 +145,4 @@ Template is available at [public/app-config.example.js](public/app-config.exampl
 - If `provider` is `supabase` and credentials are present, app uses Supabase REST API.
 - The app has no user field in the UI and tracks entries under the built-in `default` user.
 - Current app version does not include sign-in/sign-up authentication UI.
-- Current implementation upserts all known entries by `id` and never deletes rows.
+- Current implementation upserts by `id` for save/update and uses row delete for entry removal.

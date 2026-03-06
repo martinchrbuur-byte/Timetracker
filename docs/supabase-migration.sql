@@ -68,6 +68,7 @@ alter table public.tracker_users enable row level security;
 drop policy if exists "anon_read_time_entries" on public.time_entries;
 drop policy if exists "anon_write_time_entries" on public.time_entries;
 drop policy if exists "anon_update_time_entries" on public.time_entries;
+drop policy if exists "anon_delete_time_entries" on public.time_entries;
 
 drop policy if exists "anon_read_tracker_users" on public.tracker_users;
 drop policy if exists "anon_write_tracker_users" on public.tracker_users;
@@ -91,6 +92,12 @@ for update
 to anon
 using (true)
 with check (true);
+
+create policy "anon_delete_time_entries"
+on public.time_entries
+for delete
+to anon
+using (true);
 
 create policy "anon_read_tracker_users"
 on public.tracker_users
