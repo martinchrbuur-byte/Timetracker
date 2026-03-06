@@ -1,7 +1,18 @@
 # Work Hours Tracker — Next Roadmap (PM + UX + Architecture)
 
 Date: 2026-03-06  
+Last updated: 2026-03-06 (post-implementation status refresh)
 Scope: Existing single-page work-hours tracker (check-in/out, history, edit time, localStorage + Supabase support)
+
+## Status Legend
+- ✅ Implemented
+- 🟡 Planned / Not started
+
+## Current Delivery Snapshot
+- ✅ V1.1 / Faster Edit Flow (Quick Correct)
+- ✅ V2 / Offline-First Queue + Sync Status
+- ✅ V3 / Advanced Historic Analytics (weekly/monthly trends)
+- 🟡 All other roadmap items remain planned
 
 ## 1) Product Manager View
 
@@ -47,6 +58,9 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 ### Roadmap Items (V1.1)
 
 #### 1) Smart Session Integrity Feedback
+**Implementation status**
+- 🟡 Planned.
+
 **UX rationale**
 - Users need immediate confidence that a session is valid without scanning full history.
 
@@ -87,6 +101,9 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 - False positives on long sessions; make thresholds configurable and conservative by default.
 
 #### 2) Faster Edit Flow (Quick Correct)
+**Implementation status**
+- ✅ Implemented in app (2026-03-06): session cards now provide `Quick -15m`, `Quick +15m`, and `Full edit` actions.
+
 **UX rationale**
 - Most edits are minor; current edit sheet can feel heavy for small corrections.
 
@@ -124,7 +141,14 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 **Risks + mitigation**
 - Boundary bugs around midnight; centralize timezone conversion in shared date utilities.
 
+**Delivered notes**
+- Quick actions currently target checkout adjustments and reuse existing overlap/time-order validation.
+- Active sessions (no checkout yet) keep quick-adjust disabled and continue to use full edit flow.
+
 #### 3) Export v1 (CSV for selected period)
+**Implementation status**
+- 🟡 Planned.
+
 **UX rationale**
 - Users need a portable summary for payroll and personal records.
 
@@ -183,6 +207,9 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 ### Roadmap Items (V2)
 
 #### 1) Offline-First Queue + Sync Status
+**Implementation status**
+- ✅ Implemented in app (2026-03-06): offline queue, cached fallback, reconnect flush, and sync status badge are live.
+
 **UX rationale**
 - Users should never fear data loss when connection drops.
 
@@ -223,7 +250,15 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 **Risks + mitigation**
 - Duplicate writes; enforce operation idempotency and last-write conflict resolution policy.
 
+**Delivered notes**
+- Queue currently stores `saveEntries` and `deleteEntry` operations in local storage and replays on reconnect.
+- Sync states currently surfaced in UI: `Synced`, `Syncing`, `Pending`, `Offline`, `Sync error`.
+- Conflict policy remains client-first retry and should be hardened further for multi-device concurrent edits.
+
 #### 2) PWA Installability and Background Readiness
+**Implementation status**
+- 🟡 Planned.
+
 **UX rationale**
 - Frequent users benefit from app-like launch and resilience.
 
@@ -281,6 +316,9 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 ### Roadmap Items (V3)
 
 #### 1) Advanced Historic Analytics (weekly/monthly trends)
+**Implementation status**
+- ✅ Implemented in app (2026-03-06): historic analytics panel with totals, active days, avg active day, trend label, peak day, and daily trend rows.
+
 **UX rationale**
 - Users need pattern visibility, not just row-level logs.
 
@@ -318,7 +356,14 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 **Risks + mitigation**
 - Performance for large histories; lazy compute + memoization.
 
+**Delivered notes**
+- Current analytics output is summary-card based and list-based (no chart primitives yet).
+- Trend classification is currently heuristic (`increasing`/`decreasing`/`stable`) using first-half vs second-half average deltas.
+
 #### 2) Compliance Rules Engine (breaks, max shift warnings)
+**Implementation status**
+- 🟡 Planned.
+
 **UX rationale**
 - Prevent costly mistakes by warning users before policy breaches.
 
@@ -356,6 +401,9 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 - Legal-policy variance by region; keep rules configurable and disabled by default.
 
 #### 3) Team Mode Foundations (manager visibility for small teams)
+**Implementation status**
+- 🟡 Planned.
+
 **UX rationale**
 - Teams need lightweight oversight without moving to a full HR suite.
 
@@ -412,6 +460,9 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 ### Roadmap Items (V4)
 
 #### 1) Scheduled Reporting + Delivery
+**Implementation status**
+- 🟡 Planned.
+
 **UX rationale**
 - Users should not manually generate the same report every pay period.
 
@@ -449,6 +500,9 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 - Failed deliveries; add retries, dead-letter queue, and user-visible job history.
 
 #### 2) Integrations API (Payroll/Project systems)
+**Implementation status**
+- 🟡 Planned.
+
 **UX rationale**
 - Exporting manually to external systems is error-prone and slow.
 
@@ -505,9 +559,9 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 - Keep destructive migrations off by default; require explicit admin runbooks.
 
 ### Testing Strategy Evolution
-- V1.1: extend regression/unit tests for integrity and quick edits.
-- V2: add offline/sync integration and resilience tests.
-- V3: add policy matrix, analytics correctness, and auth/RLS tests.
+- V1.1: quick-edit regression coverage is implemented; integrity-specific coverage is still planned.
+- V2: offline/sync integration and reconnect replay tests are implemented.
+- V3: analytics correctness regression coverage is implemented; policy/auth-RLS test expansions remain planned.
 - V4: add adapter contract tests and scheduled job end-to-end coverage.
 
 ---

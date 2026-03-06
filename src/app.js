@@ -1,6 +1,7 @@
 import { buildMainView } from "./ui/mainView.js";
 import { renderTrackerState } from "./ui/checkView.js";
 import {
+  adjustEntryMinutes,
   buildHistoricAnalytics,
   buildHistoricStartEndOverview,
   checkIn,
@@ -297,13 +298,31 @@ async function handleEditDelete() {
   }
 }
 
-function handleHistoryActionClick(event) {
-  const editButton = event.target.closest("[data-entry-id]");
+async function handleHistoryActionClick(event) {
+  const quickButton = event.target.closest("[data-quick-minutes][data-entry-id]");
+  if (quickButton) {
+    if (!requireAuth("You must be signed in to edit entries.")) {
+      return;
+    }
+
+    const entryId = quickButton.dataset.entryId;
+    const quickMinutes = Number.parseInt(quickButton.dataset.quickMinutes || "0", 10);
+
+    if (!entryId || !Number.isFinite(quickMinutes) || quickMinutes === 0) {
+      return;
+    }
+
+    const result = await adjustEntryMinutes(entryId, 0, quickMinutes, appState.currentUserId);
+    applyResult(result);
+    return;
+  }
+
+  const editButton = event.target.closest("[data-edit-entry-id]");
   if (!editButton) {
     return;
   }
 
-  const entryId = editButton.dataset.entryId;
+  const entryId = editButton.dataset.editEntryId;
   if (!entryId) {
     return;
   }

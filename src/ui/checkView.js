@@ -166,6 +166,8 @@ function buildDayOverview(entries, activeEntry, mode, dayOverviewDateISO, dayOve
 
 // History is rendered as cards (not table rows) to optimize readability and touch targets on iPhone widths.
 function buildHistoryRow(entry) {
+  const canQuickAdjustCheckout = Boolean(entry.checkOutAt);
+
   return `
       <article class="session-card" role="listitem">
         <div class="session-row">
@@ -186,11 +188,31 @@ function buildHistoryRow(entry) {
         </div>
         <div class="session-actions">
           <button
-            class="btn btn-secondary btn-inline-edit"
+            class="btn btn-secondary btn-compact btn-inline-quick"
             type="button"
             data-entry-id="${entry.id}"
+            data-quick-minutes="-15"
+            aria-label="Subtract 15 minutes from checkout"
+            ${canQuickAdjustCheckout ? "" : "disabled"}
           >
-            Edit time
+            Quick -15m
+          </button>
+          <button
+            class="btn btn-secondary btn-compact btn-inline-quick"
+            type="button"
+            data-entry-id="${entry.id}"
+            data-quick-minutes="15"
+            aria-label="Add 15 minutes to checkout"
+            ${canQuickAdjustCheckout ? "" : "disabled"}
+          >
+            Quick +15m
+          </button>
+          <button
+            class="btn btn-secondary btn-inline-edit"
+            type="button"
+            data-edit-entry-id="${entry.id}"
+          >
+            Full edit
           </button>
         </div>
       </article>

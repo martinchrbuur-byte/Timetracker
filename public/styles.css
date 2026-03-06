@@ -564,9 +564,19 @@ p {
 
 .session-actions {
   margin-top: 0.6rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .btn-inline-edit {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.btn-inline-quick {
+  min-height: 36px;
   width: 100%;
 }
 

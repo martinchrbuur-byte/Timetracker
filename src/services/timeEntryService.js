@@ -22,8 +22,10 @@ const MESSAGES = {
   CHECK_IN_ERROR: "Check-in failed due to a storage error.",
   CHECK_OUT_ERROR: "Check-out failed due to a storage error.",
   UPDATE_SUCCESS: "Session times updated successfully.",
+  QUICK_ADJUST_SUCCESS: "Session adjusted successfully.",
   UPDATE_ERROR: "Update failed due to a storage error.",
   UPDATE_NOT_FOUND: "Cannot edit: session not found.",
+  QUICK_ADJUST_ACTIVE_BLOCKED: "Cannot quick adjust: active sessions require full edit.",
   DELETE_SUCCESS: "Session deleted successfully.",
   DELETE_ERROR: "Delete failed due to a storage error.",
   DELETE_NOT_FOUND: "Cannot delete: session not found.",
@@ -132,6 +134,16 @@ function validateEditTimes(entries, targetEntryId, nextCheckInAt, nextCheckOutAt
   return null;
 }
 
+function shiftIsoByMinutes(isoValue, deltaMinutes) {
+  const timestamp = toTimestamp(isoValue);
+  if (!Number.isFinite(timestamp)) {
+    return isoValue;
+  }
+
+  const normalizedDeltaMinutes = Number.isFinite(deltaMinutes) ? deltaMinutes : 0;
+  return new Date(timestamp + normalizedDeltaMinutes * 60000).toISOString();
+}
+
 export async function getInitialState(userId = "default") {
   const allEntries = await readEntries();
   const entries = sortEntriesByLatestCheckIn(filterEntriesByUser(allEntries, userId));
@@ -212,6 +224,58 @@ export async function updateEntryTimes(entryId, nextCheckInAt, nextCheckOutAt, u
     );
 
     return buildResult(updatedEntries, userId, MESSAGES.UPDATE_SUCCESS, true);
+  });
+}
+
+export async function adjustEntryMinutes(
+  entryId,
+  deltaInMinutes = 0,
+  deltaOutMinutes = 0,
+  userId = "default"
+) {
+  return runWithFallback(userId, MESSAGES.UPDATE_ERROR, (allEntries) => {
+    const userEntries = filterEntriesByUser(allEntries, userId);
+    const targetEntry = userEntries.find((entry) => entry.id === entryId);
+
+    if (!targetEntry) {
+      return buildResult(allEntries, userId, MESSAGES.UPDATE_NOT_FOUND);
+    }
+
+    const normalizedDeltaInMinutes = Number.isFinite(deltaInMinutes) ? deltaInMinutes : 0;
+    const normalizedDeltaOutMinutes = Number.isFinite(deltaOutMinutes) ? deltaOutMinutes : 0;
+
+    if (targetEntry.checkOutAt === null && normalizedDeltaOutMinutes !== 0) {
+      return buildResult(allEntries, userId, MESSAGES.QUICK_ADJUST_ACTIVE_BLOCKED);
+    }
+
+    const nextCheckInAt = shiftIsoByMinutes(targetEntry.checkInAt, normalizedDeltaInMinutes);
+    const nextCheckOutAt =
+      targetEntry.checkOutAt === null
+        ? null
+        : shiftIsoByMinutes(targetEntry.checkOutAt, normalizedDeltaOutMinutes);
+
+    const validationMessage = validateEditTimes(
+      userEntries,
+      entryId,
+      nextCheckInAt,
+      nextCheckOutAt
+    );
+
+    if (validationMessage) {
+      return buildResult(allEntries, userId, validationMessage);
+    }
+
+    const updatedEntries = allEntries.map((entry) =>
+      entry.id === entryId
+        ? {
+            ...entry,
+            checkInAt: nextCheckInAt,
+            checkOutAt: nextCheckOutAt,
+          }
+        : entry
+    );
+
+    return buildResult(updatedEntries, userId, MESSAGES.QUICK_ADJUST_SUCCESS, true);
   });
 }
 

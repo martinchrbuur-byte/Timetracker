@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
 import {
+  adjustEntryMinutes,
   checkIn,
   checkOut,
   deleteEntry,
@@ -214,4 +215,39 @@ test("11) localDateTimeInputToIso parses localized date-time text", () => {
 
   assert.ok(typeof parsedIso === "string");
   assert.ok(parsedIso.endsWith("Z"));
+});
+
+test("12) quick adjust updates checkout by 15 minutes", async () => {
+  seedEntries([
+    {
+      id: "a",
+      checkInAt: "2026-03-04T08:00:00.000Z",
+      checkOutAt: "2026-03-04T10:00:00.000Z",
+    },
+  ]);
+
+  const result = await adjustEntryMinutes("a", 0, 15, "default");
+
+  assert.equal(result.message, "Session adjusted successfully.");
+  const updated = result.entries.find((entry) => entry.id === "a");
+  assert.equal(updated.checkOutAt, "2026-03-04T10:15:00.000Z");
+});
+
+test("13) quick adjust rejects overlap when extending checkout", async () => {
+  seedEntries([
+    {
+      id: "a",
+      checkInAt: "2026-03-04T08:00:00.000Z",
+      checkOutAt: "2026-03-04T10:00:00.000Z",
+    },
+    {
+      id: "b",
+      checkInAt: "2026-03-04T10:10:00.000Z",
+      checkOutAt: "2026-03-04T11:00:00.000Z",
+    },
+  ]);
+
+  const result = await adjustEntryMinutes("a", 0, 15, "default");
+
+  assert.equal(result.message, "Cannot save: session overlaps another entry.");
 });
