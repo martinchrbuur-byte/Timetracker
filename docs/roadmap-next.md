@@ -13,6 +13,8 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 - ✅ V2 / Offline-First Queue + Sync Status
 - ✅ V3 / Advanced Historic Analytics (weekly/monthly trends)
 - ✅ V1.1 / Dark mode toggle
+- ✅ V2 / Sign-up + Sign-in UX flow (landing, confirmation, redirect)
+- ✅ Regression + E2E coverage for sign-up flow
 - 🟡 All other roadmap items remain planned
 
 ## 1) Product Manager View
@@ -562,6 +564,8 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 ### Testing Strategy Evolution
 - V1.1: quick-edit regression coverage is implemented; integrity-specific coverage is still planned.
 - V2: offline/sync integration and reconnect replay tests are implemented.
+- V2: sign-up regression coverage is implemented, including duplicate email, weak password, confirmation-required flow, and network failure mapping.
+- V2: Playwright e2e coverage is implemented for landing → sign-up → confirmation/sign-in and direct sign-up → app-home redirect paths.
 - V3: analytics correctness regression coverage is implemented; policy/auth-RLS test expansions remain planned.
 - V4: add adapter contract tests and scheduled job end-to-end coverage.
 

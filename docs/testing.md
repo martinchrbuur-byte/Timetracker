@@ -14,7 +14,7 @@ Run all Node tests:
 npm test
 ```
 
-Current regression coverage includes 27 scenarios for:
+Current regression coverage includes 32 scenarios for:
 - check-in/check-out baseline behavior,
 - valid session time edits,
 - invalid time ordering,
@@ -29,6 +29,46 @@ Current regression coverage includes 27 scenarios for:
 - historic week/month/year range filtering,
 - active-session end-time handling in historic overview,
 - offline queue write fallback and reconnect flush behavior.
+
+Additional sign-up regression coverage includes:
+- Supabase sign-up with immediate session return,
+- sign-up requiring email confirmation (no immediate session),
+- duplicate-email error mapping,
+- weak-password rejection before network request,
+- network failure mapping for sign-up.
+
+Sign-up regression tests live in:
+- `tests/regression/signup-flow.regression.test.mjs`
+
+## E2E Suite (Playwright)
+
+Install dependencies and browser binary:
+
+```bash
+npm install
+npx playwright install chromium
+```
+
+Run e2e tests:
+
+```bash
+npm run test:e2e
+```
+
+Run in headed mode:
+
+```bash
+npm run test:e2e:headed
+```
+
+E2E coverage currently validates:
+- landing -> sign-up -> confirmation -> sign-in transition,
+- landing -> sign-up -> authenticated app-home redirect when session is returned.
+
+E2E assets:
+- `playwright.config.mjs`
+- `tests/e2e/server.mjs`
+- `tests/e2e/signup-flow.e2e.spec.mjs`
 
 ## Historic Overview Focus
 

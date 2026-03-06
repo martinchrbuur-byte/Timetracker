@@ -1,31 +1,44 @@
 # Step 3 — UX Design (UI/UX Designer)
 
 ## UX Concept
-A focused single-page dashboard where the user immediately sees tracking status and can perform primary actions (Check In/Check Out) without navigation overhead. The interface prioritizes clarity, speed, and confidence.
+A focused single-page app with lightweight auth routing where signed-out users land on a trust-first onboarding path (Landing → Sign Up/Sign In → Confirmation) before entering the tracking dashboard.
 
 ## Navigation Structure
-- Single-screen layout (no route changes in V1).
-- Top section: app title and short purpose.
-- Middle section: status card + action buttons.
-- Bottom section: history table of tracked sessions.
+- Single-page layout with hash-based auth routes for signed-out states (`#landing`, `#signup`, `#signin`, `#confirmation`) and `#app` for authenticated state.
+- Signed-out: landing panel, auth form panel, and confirmation panel (only one visible at a time).
+- Signed-in: status card + action buttons + day/historic overview + recent sessions.
 
 ## Text-Based Wireframes
 
-### Desktop
+### Desktop (Signed-Out)
 ```
 +-------------------------------------------------------------+
 | Work Hours Tracker                                          |
-| Track check-in/check-out timestamps locally in your browser |
+| Welcome + trust message                                     |
 +-------------------------------------------------------------+
-| STATUS: [Checked Out]                                      |
-| Last Check In: --                                          |
-| Message: Ready                                             |
-| [ Check In ]   [ Check Out ]                               |
+| [ Create account ] [ I already have an account ]           |
 +-------------------------------------------------------------+
-| Recent Sessions                                             |
-| Date       | Check In        | Check Out       | Duration   |
-| 2026-03-04 | 08:58:10        | 12:04:12        | 3h 06m     |
-| ...                                                         |
+| Create account                                              |
+| Email                                                       |
+| Password                                                    |
+| Confirm Password                                            |
+| Validation / loading message                                |
+| [ Sign Up ] [ Back ]                                        |
++-------------------------------------------------------------+
+| Confirmation panel                                          |
+| "Check your email" + Continue to sign in                  |
++-------------------------------------------------------------+
+```
+
+### Desktop (Signed-In)
+```
++-------------------------------------------------------------+
+| Current Status + Sync + Account controls                    |
+| [ Check In ] [ Check Out ]                                  |
++-------------------------------------------------------------+
+| Day/Historic Overview + Analytics                            |
++-------------------------------------------------------------+
+| Recent Sessions                                              |
 +-------------------------------------------------------------+
 ```
 
@@ -33,31 +46,46 @@ A focused single-page dashboard where the user immediately sees tracking status 
 ```
 -----------------------------------
 Work Hours Tracker
-Track timestamps locally
+Welcome / Account flow
 
+[ Create account ]
+[ I already have an account ]
+
+Email
+Password
+Confirm Password
+Validation message
+[ Sign Up ]
+
+After sign-in:
 STATUS: Checked In
-Started: 09:02
-Message: Checked in successfully
-
-[ Check In ]
-[ Check Out ]
+[ Check In ] [ Check Out ]
 
 Recent Sessions
-Date | In | Out | Duration
 ...
 -----------------------------------
 ```
 
 ## Interaction Flows
 1. Initial load:
-   - App reads localStorage.
-   - UI renders current status and history.
-2. Check In:
+   - App restores auth session.
+   - If signed out, landing route is shown.
+   - If signed in, app-home dashboard is shown.
+2. Sign Up:
+   - User opens Create account flow.
+   - System validates email/password/confirmation.
+   - Supabase sign-up runs.
+   - If session is absent (email verify required), confirmation panel appears with continue-to-sign-in action.
+   - If session exists, user is redirected directly to app-home.
+3. Sign In:
+   - User enters credentials and signs in.
+   - App transitions to authenticated dashboard state.
+4. Check In:
    - User clicks Check In.
    - System validates no active session.
    - New entry is created with check-in timestamp.
    - UI updates status/message/history.
-3. Check Out:
+5. Check Out:
    - User clicks Check Out.
    - System validates active session exists.
    - Active entry receives check-out timestamp.

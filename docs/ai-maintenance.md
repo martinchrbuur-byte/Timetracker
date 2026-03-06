@@ -29,6 +29,17 @@
    - `npm run test:regression`
    - `npm test`
 
+## Documentation Update Policy (Mandatory)
+
+- Always update all relevant docs in the same change set when behavior, UI, architecture, setup, or tests change.
+- Minimum review targets:
+   - `docs/requirements.md` for functional/acceptance deltas,
+   - `docs/design.md` for UX flow changes,
+   - `docs/technical-plan.md` for architecture/module flow changes,
+   - `docs/testing.md` for command/coverage changes,
+   - roadmap docs for status shifts (`docs/roadmap.md`, `docs/roadmap-next.md`).
+- If setup/security assumptions change, update `docs/supabase-setup.md` in the same PR.
+
 ## Naming Conventions
 
 - Use `entry` for a single time record.

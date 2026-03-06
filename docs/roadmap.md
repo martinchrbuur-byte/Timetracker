@@ -1,5 +1,10 @@
 # Step 5D — Roadmap
 
+## Current Status (2026-03-06)
+- Delivered: Supabase sign-up/sign-in UX flow with landing, confirmation step, and authenticated app-home redirect.
+- Delivered: regression coverage for auth service sign-up edge cases and Playwright e2e scenarios for the full sign-up journey.
+- Remaining roadmap phases below are still relevant for deeper hardening (RLS isolation, integrations, automation).
+
 ## V1: Local Prototype (Browser + Live Server)
 - Build dependency-free SPA-style browser app with modular vanilla JS.
 - Implement check-in/check-out workflow and session history.

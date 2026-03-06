@@ -150,3 +150,32 @@ Many individual workers and small teams need a fast way to track working time bu
 - Date/range helpers are centralized in `src/shared/dateTime.js` (`toLocalDateKey`, `getRangeBounds`).
 - UI structure and refs are extended in `src/ui/mainView.js`; rendering stays in `src/ui/checkView.js`.
 - Persistence layer in `src/services/storageService.js` remains unchanged and provider-agnostic (localStorage/Supabase).
+
+---
+
+# Step 6 — Auth & Sign-Up Revision (Product Owner)
+
+## Updated Functional Requirements
+- FR-18: Provide a signed-out landing panel with clear routes to Create Account and Sign In.
+- FR-19: Provide sign-up form fields for email, password, and confirm password.
+- FR-20: Validate sign-up input client-side (email format, password strength, password confirmation match).
+- FR-21: Integrate Supabase `auth.signUp` behavior and handle both confirmation-required and immediate-session responses.
+- FR-22: Provide explicit confirmation screen and transition to sign-in after account creation when email verification is required.
+- FR-23: Route authenticated users to app home state and hide signed-out panels.
+
+## Updated Non-Functional Requirements
+- NFR-9: Signed-out auth flow must remain keyboard-complete without pointer interaction.
+- NFR-10: Loading, success, and error states must be exposed via readable inline messaging and ARIA live regions.
+- NFR-11: Mobile and desktop layouts must preserve clear action hierarchy for landing/auth/confirmation panels.
+
+## Updated User Stories (INVEST)
+- US-8: As a new user, I want a clear Create Account path from landing so I can start quickly.
+- US-9: As a new user, I want transparent password and validation feedback so I can fix issues immediately.
+- US-10: As a new user, I want clear confirmation guidance after sign-up so I know what to do next.
+
+## Acceptance Criteria
+- AC-11: Given signed-out state, landing panel is visible and provides Create Account and Sign In actions.
+- AC-12: Given invalid sign-up input, submission is blocked and a clear validation message is shown.
+- AC-13: Given Supabase sign-up response with no session, confirmation panel is shown and user can continue to sign-in.
+- AC-14: Given Supabase sign-up response with session, user is redirected to authenticated app home.
+- AC-15: Given duplicate email or network failure, user sees actionable error messaging.

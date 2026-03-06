@@ -52,9 +52,9 @@ before update on public.time_entries
 for each row execute function public.set_updated_at();
 ```
 
-## 2) RLS Policy (Simple V1)
+## 2) RLS Policy (Current Client Mode)
 
-For the current single-tenant/browser app (no auth yet), use public anon access:
+The current client persistence path still reads/writes `time_entries` via anon REST headers. For compatibility with current implementation, use anon policies:
 
 ```sql
 alter table public.time_entries enable row level security;
@@ -143,6 +143,10 @@ Template is available at [public/app-config.example.js](public/app-config.exampl
 
 - If `provider` is `local`, app uses browser localStorage.
 - If `provider` is `supabase` and credentials are present, app uses Supabase REST API.
-- The app has no user field in the UI and tracks entries under the built-in `default` user.
-- Current app version does not include sign-in/sign-up authentication UI.
+- The app includes sign-up/sign-in UI and Supabase auth calls.
+- Current data isolation is still client-filtered by `user_id`; it is not yet fully enforced by authenticated RLS policies in `time_entries` requests.
 - Current implementation upserts by `id` for save/update and uses row delete for entry removal.
+
+### Security hardening note
+
+For production-grade multi-user isolation, move `time_entries` REST requests to authenticated user bearer tokens and enforce `auth.uid()`-scoped RLS policies. Keep anon-open policies only for local/dev-style experimentation.
