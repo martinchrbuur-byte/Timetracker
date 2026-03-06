@@ -671,7 +671,30 @@ p {
   border: 1px solid var(--border);
   border-radius: 12px;
   font: inherit;
+  color: var(--text);
   background: var(--surface);
+}
+
+.field-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+:root[data-theme="dark"] .field-input,
+:root[data-theme="dark"] .day-overview__date-input {
+  color-scheme: dark;
+}
+
+:root[data-theme="dark"] .field-input[type="date"]::-webkit-datetime-edit,
+:root[data-theme="dark"] .field-input[type="datetime-local"]::-webkit-datetime-edit,
+:root[data-theme="dark"] .day-overview__date-input::-webkit-datetime-edit {
+  color: var(--text);
+}
+
+:root[data-theme="dark"] .field-input[type="date"]::-webkit-datetime-edit-text,
+:root[data-theme="dark"] .field-input[type="datetime-local"]::-webkit-datetime-edit-text,
+:root[data-theme="dark"] .day-overview__date-input::-webkit-datetime-edit-text {
+  color: var(--text-secondary);
 }
 
 .field-help {

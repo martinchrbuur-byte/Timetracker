@@ -12,7 +12,7 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 - ✅ V1.1 / Faster Edit Flow (Quick Correct)
 - ✅ V2 / Offline-First Queue + Sync Status
 - ✅ V3 / Advanced Historic Analytics (weekly/monthly trends)
-- ✅ V1.1 / Dark mode toggle
+- ✅ V1.1 / Dark mode toggle + input contrast refinement
 - ✅ V2 / Sign-up + Sign-in UX flow (landing, confirmation, redirect)
 - ✅ Regression + E2E coverage for sign-up flow
 - 🟡 All other roadmap items remain planned
