@@ -14,6 +14,22 @@
   --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.1);
 }
 
+:root[data-theme="dark"] {
+  --bg-start: #0b1220;
+  --bg-end: #111827;
+  --surface: #0f172a;
+  --surface-muted: #1e293b;
+  --primary: #60a5fa;
+  --primary-pressed: #3b82f6;
+  --positive: #22c55e;
+  --warning: #f59e0b;
+  --text: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --border: #334155;
+  --focus: #60a5fa;
+  --shadow-soft: 0 10px 30px rgba(2, 6, 23, 0.5);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -195,6 +211,10 @@ p {
   background: linear-gradient(180deg, #eff6ff 0%, #eef2ff 100%);
 }
 
+:root[data-theme="dark"] .day-overview {
+  background: linear-gradient(180deg, #172554 0%, #1e293b 100%);
+}
+
 .day-overview__header {
   display: flex;
   justify-content: space-between;
@@ -227,6 +247,10 @@ p {
   background: var(--surface);
   color: var(--text);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.09);
+}
+
+:root[data-theme="dark"] .overview-tab.is-active {
+  box-shadow: 0 2px 8px rgba(2, 6, 23, 0.4);
 }
 
 .day-overview__filters {
@@ -493,7 +517,7 @@ p {
 
 .btn-secondary:hover:not(:disabled),
 .btn-secondary:active:not(:disabled) {
-  background: #e2e8f0;
+  background: var(--border);
 }
 
 .btn:disabled {

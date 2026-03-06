@@ -305,9 +305,17 @@ function renderHistoricAnalytics(refs, historicAnalytics, isTodayMode) {
 
 export function renderTrackerState(refs, state) {
   const isAuthenticated = Boolean(state.isAuthenticated);
+  const isDarkTheme = state.themeMode === "dark";
 
   refs.trackerPanel.hidden = isAuthenticated;
   refs.authPanel.hidden = isAuthenticated;
+
+  refs.themeToggleButton.textContent = isDarkTheme ? "Light mode" : "Dark mode";
+  refs.themeToggleButton.setAttribute("aria-pressed", String(isDarkTheme));
+  refs.themeToggleButton.setAttribute(
+    "aria-label",
+    isDarkTheme ? "Switch to light mode" : "Switch to dark mode"
+  );
 
   refs.authEmailInput.disabled = isAuthenticated;
   refs.authPasswordInput.disabled = isAuthenticated;

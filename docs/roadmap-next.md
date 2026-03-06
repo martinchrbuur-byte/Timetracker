@@ -12,6 +12,7 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 - ✅ V1.1 / Faster Edit Flow (Quick Correct)
 - ✅ V2 / Offline-First Queue + Sync Status
 - ✅ V3 / Advanced Historic Analytics (weekly/monthly trends)
+- ✅ V1.1 / Dark mode toggle
 - 🟡 All other roadmap items remain planned
 
 ## 1) Product Manager View

@@ -4,11 +4,13 @@
 - Modular vanilla JavaScript in browser using ES modules.
 - Single-page structure (no routing required for V1).
 - Layered flow: UI modules -> service layer -> storage service.
+- Theme support via CSS tokens with runtime `data-theme` toggle on root element.
 
 ## Component / Module Structure
 - `src/app.js`: app bootstrap, event binding, render cycle.
 - `src/ui/mainView.js`: static shell markup and root DOM wiring.
 - `src/ui/checkView.js`: dynamic UI rendering (status, table, messages).
+- `public/styles.css`: token-based light/dark theme definitions.
 - `src/models/timeEntry.js`: entry factory/model utilities.
 - `src/services/timeEntryService.js`: domain logic for check-in/out and retrieval.
 - `src/services/storageService.js`: localStorage read/write abstraction.

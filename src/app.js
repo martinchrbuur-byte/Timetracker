@@ -29,6 +29,41 @@ import {
 } from "./services/storageService.js";
 
 const READY_MESSAGE = "Ready.";
+const THEME_STORAGE_KEY = "workHours.theme.v1";
+
+function getPreferredThemeMode() {
+  try {
+    const persisted = localStorage.getItem(THEME_STORAGE_KEY);
+    if (persisted === "dark" || persisted === "light") {
+      return persisted;
+    }
+  } catch (error) {
+    // Ignore localStorage errors and continue with system/default fallback.
+  }
+
+  if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  return "light";
+}
+
+function saveThemeMode(themeMode) {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+  } catch (error) {
+    // Ignore localStorage errors; theme still applies for current session.
+  }
+}
+
+function applyThemeMode(themeMode) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const resolvedTheme = themeMode === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", resolvedTheme);
+}
 
 const rootElement = document.getElementById("app");
 const viewRefs = buildMainView(rootElement);
@@ -40,6 +75,7 @@ let appState = {
   currentUserId: "default",
   entries: [],
   activeEntry: null,
+  themeMode: getPreferredThemeMode(),
   syncStatus: getSyncStatus(),
   message: READY_MESSAGE,
   dayOverviewMode: "today",
@@ -70,6 +106,10 @@ let appState = {
 };
 
 function patchState(nextState) {
+  if (Object.prototype.hasOwnProperty.call(nextState || {}, "themeMode")) {
+    applyThemeMode(nextState.themeMode);
+  }
+
   appState = {
     ...appState,
     ...nextState,
@@ -210,6 +250,7 @@ async function initialize() {
     }
 
     const todayDateISO = toLocalDateInputValue();
+    const initialThemeMode = getPreferredThemeMode();
 
     appState = {
       isAuthenticated: Boolean(restoredUserId),
@@ -218,6 +259,7 @@ async function initialize() {
       currentUserId: restoredUserId || "default",
       entries: initialState.entries,
       activeEntry: initialState.activeEntry,
+      themeMode: initialThemeMode,
       syncStatus: getSyncStatus(),
       message: startupMessage,
       dayOverviewMode: "today",
@@ -227,6 +269,7 @@ async function initialize() {
 
     viewRefs.dayOverviewHistoricDate.value = todayDateISO;
     viewRefs.dayOverviewHistoricDate.max = todayDateISO;
+  applyThemeMode(initialThemeMode);
 
     render();
     await syncPendingOperations();
@@ -381,6 +424,12 @@ function setDayOverviewMode(mode) {
     dayOverviewMode: mode,
   });
   render();
+}
+
+function handleThemeToggleClick() {
+  const nextThemeMode = appState.themeMode === "dark" ? "light" : "dark";
+  saveThemeMode(nextThemeMode);
+  patchStateAndRender({ themeMode: nextThemeMode });
 }
 
 function handleOverviewTodayClick() {
@@ -569,6 +618,7 @@ viewRefs.dayOverviewHistoricButton.addEventListener("click", handleOverviewHisto
 viewRefs.dayOverviewHistoricDate.addEventListener("change", handleOverviewHistoricDateChange);
 viewRefs.dayOverviewRangeGroup.addEventListener("click", handleOverviewRangeClick);
 viewRefs.dayOverviewCopyButton.addEventListener("click", handleOverviewCopyClick);
+viewRefs.themeToggleButton.addEventListener("click", handleThemeToggleClick);
 viewRefs.authSignInButton.addEventListener("click", handleSignIn);
 viewRefs.authSignUpButton.addEventListener("click", handleSignUp);
 viewRefs.authSignOutButton.addEventListener("click", handleSignOut);

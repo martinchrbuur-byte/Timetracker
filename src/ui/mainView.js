@@ -15,6 +15,7 @@ const VIEW_SELECTORS = {
   statusLabel: "#status-label",
   statusMeta: "#status-meta",
   syncStatus: "#sync-status",
+  themeToggleButton: "#theme-toggle-btn",
   editActiveButton: "#edit-active-btn",
   dayOverviewTitle: "#day-overview-title",
   dayOverviewDate: "#day-overview-date",
@@ -98,6 +99,9 @@ export function buildMainView(rootElement) {
       <div class="status-panel__header">
         <h2 id="status-title">Current Status</h2>
         <div class="status-panel__actions">
+          <button id="theme-toggle-btn" class="btn btn-secondary btn-compact" type="button" aria-pressed="false">
+            Dark mode
+          </button>
           <p id="sync-status" class="sync-status" role="status" aria-live="polite">Synced</p>
           <button id="account-settings-btn" class="btn btn-secondary btn-compact" type="button">Account</button>
           <button id="quick-signout-btn" class="btn btn-secondary btn-compact" type="button">Sign Out</button>
