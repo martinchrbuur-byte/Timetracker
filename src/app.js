@@ -7,6 +7,7 @@ import {
   checkIn,
   checkOut,
   deleteEntry,
+  evaluateIntegrity,
   getInitialState,
   updateEntryTimes,
 } from "./services/timeEntryService.js";
@@ -225,6 +226,11 @@ let appState = {
     periodStartLabel: "--",
     periodEndLabel: "--",
   },
+  integrityFeedback: {
+    level: "valid",
+    label: "Integrity: Valid",
+    detail: "No time conflicts detected.",
+  },
   historicAnalytics: {
     range: "week",
     rows: [],
@@ -302,6 +308,7 @@ function render() {
       appState.dayOverviewDateISO,
       appState.dayOverviewHistoricRange
     ),
+    integrityFeedback: evaluateIntegrity(appState.entries, appState.activeEntry),
   };
   renderTrackerState(viewRefs, appState);
 }

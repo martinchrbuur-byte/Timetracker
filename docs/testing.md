@@ -14,7 +14,7 @@ Run all Node tests:
 npm test
 ```
 
-Current regression coverage includes 32 scenarios for:
+Current regression coverage includes 38 scenarios for:
 - check-in/check-out baseline behavior,
 - valid session time edits,
 - invalid time ordering,
@@ -28,7 +28,8 @@ Current regression coverage includes 32 scenarios for:
 - historic overview day grouping (earliest start/latest end),
 - historic week/month/year range filtering,
 - active-session end-time handling in historic overview,
-- offline queue write fallback and reconnect flush behavior.
+- offline queue write fallback and reconnect flush behavior,
+- integrity feedback evaluation (valid/warning/blocked scenarios).
 
 Additional sign-up regression coverage includes:
 - Supabase sign-up with immediate session return,
@@ -39,6 +40,9 @@ Additional sign-up regression coverage includes:
 
 Sign-up regression tests live in:
 - `tests/regression/signup-flow.regression.test.mjs`
+
+Integrity feedback regression tests live in:
+- `tests/regression/integrity-feedback.regression.test.mjs`
 
 ## E2E Suite (Playwright)
 

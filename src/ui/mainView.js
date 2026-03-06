@@ -28,6 +28,8 @@ const VIEW_SELECTORS = {
   dayOverviewPanel: "#day-overview-panel",
   historyPanel: "#history-panel",
   statusLabel: "#status-label",
+  integrityChip: "#integrity-chip",
+  integrityDetail: "#integrity-detail",
   statusMeta: "#status-meta",
   syncStatus: "#sync-status",
   themeToggleButton: "#theme-toggle-btn",
@@ -163,6 +165,10 @@ export function buildMainView(rootElement) {
         </div>
       </div>
       <div id="status-label" class="status-label inactive">Checked Out</div>
+      <p id="integrity-chip" class="integrity-chip integrity-chip--valid" role="status" aria-live="polite">
+        Integrity: Valid
+      </p>
+      <p id="integrity-detail" class="integrity-detail">No time conflicts detected.</p>
       <p id="status-meta" class="status-meta">No active session.</p>
       <button id="edit-active-btn" class="btn btn-secondary" type="button">Edit time</button>
       <p id="message" class="message" role="status" aria-live="polite">Ready.</p>

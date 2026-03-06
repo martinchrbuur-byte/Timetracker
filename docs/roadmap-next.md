@@ -10,6 +10,7 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 
 ## Current Delivery Snapshot
 - ✅ V1.1 / Faster Edit Flow (Quick Correct)
+- ✅ V1.1 / Smart Session Integrity Feedback
 - ✅ V2 / Offline-First Queue + Sync Status
 - ✅ V3 / Advanced Historic Analytics (weekly/monthly trends)
 - ✅ V1.1 / Dark mode toggle + input contrast refinement
@@ -62,7 +63,7 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 
 #### 1) Smart Session Integrity Feedback
 **Implementation status**
-- 🟡 Planned.
+- ✅ Implemented in app (2026-03-06): integrity chip and helper copy now surface `Valid`, `Warning`, and `Blocked` states from service-layer evaluation.
 
 **UX rationale**
 - Users need immediate confidence that a session is valid without scanning full history.
@@ -102,6 +103,11 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 
 **Risks + mitigation**
 - False positives on long sessions; make thresholds configurable and conservative by default.
+
+**Delivered notes**
+- Integrity evaluation currently blocks on overlap, invalid timestamps/order, and multiple active sessions.
+- Warning states currently cover stale active sessions and long completed sessions.
+- Integrity status is rendered in the status panel with text-based non-color cues and polite live-region updates.
 
 #### 2) Faster Edit Flow (Quick Correct)
 **Implementation status**

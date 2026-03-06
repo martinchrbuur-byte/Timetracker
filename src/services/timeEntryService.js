@@ -37,6 +37,17 @@ const MESSAGES = {
 };
 
 const HISTORIC_RANGES = ["week", "month", "year"];
+const INTEGRITY_THRESHOLDS = {
+  longSessionMinutes: 12 * 60,
+  staleActiveSessionMinutes: 16 * 60,
+};
+
+const INTEGRITY_MESSAGES = {
+  VALID_LABEL: "Integrity: Valid",
+  VALID_DETAIL: "No time conflicts detected.",
+  WARNING_LABEL: "Integrity: Warning",
+  BLOCKED_LABEL: "Integrity: Blocked",
+};
 
 function sortEntriesByLatestCheckIn(entries) {
   return [...entries].sort(
@@ -90,6 +101,131 @@ async function runWithFallback(userId, fallbackMessage, operation) {
 
 function intervalsOverlap(leftStart, leftEnd, rightStart, rightEnd) {
   return leftStart < rightEnd && rightStart < leftEnd;
+}
+
+function buildIntegrityFeedback(level, detail) {
+  if (level === "blocked") {
+    return {
+      level,
+      label: INTEGRITY_MESSAGES.BLOCKED_LABEL,
+      detail,
+    };
+  }
+
+  if (level === "warning") {
+    return {
+      level,
+      label: INTEGRITY_MESSAGES.WARNING_LABEL,
+      detail,
+    };
+  }
+
+  return {
+    level: "valid",
+    label: INTEGRITY_MESSAGES.VALID_LABEL,
+    detail: detail || INTEGRITY_MESSAGES.VALID_DETAIL,
+  };
+}
+
+export function evaluateIntegrity(entries, activeEntry = null, nowIso = new Date().toISOString()) {
+  const safeEntries = Array.isArray(entries) ? entries : [];
+  const nowTimestamp = toTimestamp(nowIso);
+
+  if (safeEntries.length === 0) {
+    return buildIntegrityFeedback("valid", INTEGRITY_MESSAGES.VALID_DETAIL);
+  }
+
+  const activeEntries = safeEntries.filter((entry) => entry.checkOutAt === null);
+  if (activeEntries.length > 1) {
+    return buildIntegrityFeedback(
+      "blocked",
+      "Multiple active sessions detected. Resolve by closing or correcting overlapping active entries."
+    );
+  }
+
+  for (const entry of safeEntries) {
+    const startTimestamp = toTimestamp(entry.checkInAt);
+    if (!Number.isFinite(startTimestamp)) {
+      return buildIntegrityFeedback("blocked", "Invalid check-in timestamp detected.");
+    }
+
+    if (entry.checkOutAt !== null) {
+      const endTimestamp = toTimestamp(entry.checkOutAt);
+      if (!Number.isFinite(endTimestamp)) {
+        return buildIntegrityFeedback("blocked", "Invalid check-out timestamp detected.");
+      }
+
+      if (endTimestamp < startTimestamp) {
+        return buildIntegrityFeedback(
+          "blocked",
+          "At least one session ends before it starts. Correct the affected entry."
+        );
+      }
+    }
+  }
+
+  const entriesSortedByStart = [...safeEntries].sort(
+    (leftEntry, rightEntry) => toTimestamp(leftEntry.checkInAt) - toTimestamp(rightEntry.checkInAt)
+  );
+
+  for (let index = 0; index < entriesSortedByStart.length - 1; index += 1) {
+    const leftEntry = entriesSortedByStart[index];
+    const rightEntry = entriesSortedByStart[index + 1];
+
+    const leftStart = toTimestamp(leftEntry.checkInAt);
+    const leftEnd = getEndTimestamp(leftEntry.checkOutAt);
+    const rightStart = toTimestamp(rightEntry.checkInAt);
+    const rightEnd = getEndTimestamp(rightEntry.checkOutAt);
+
+    if (intervalsOverlap(leftStart, leftEnd, rightStart, rightEnd)) {
+      return buildIntegrityFeedback(
+        "blocked",
+        "Overlapping sessions detected. Edit entries to remove time conflicts."
+      );
+    }
+  }
+
+  const staleActiveCandidate =
+    activeEntry && activeEntry.checkOutAt === null ? activeEntry : activeEntries[0] || null;
+
+  if (staleActiveCandidate) {
+    const startedAtTimestamp = toTimestamp(staleActiveCandidate.checkInAt);
+    const activeMinutes = Number.isFinite(startedAtTimestamp)
+      ? Math.floor((nowTimestamp - startedAtTimestamp) / 60000)
+      : 0;
+
+    if (activeMinutes >= INTEGRITY_THRESHOLDS.staleActiveSessionMinutes) {
+      return buildIntegrityFeedback(
+        "warning",
+        "Active session has been open for a long time. Verify check-out is not missing."
+      );
+    }
+  }
+
+  const longCompletedSessionExists = safeEntries.some((entry) => {
+    if (!entry.checkOutAt) {
+      return false;
+    }
+
+    const startTimestamp = toTimestamp(entry.checkInAt);
+    const endTimestamp = toTimestamp(entry.checkOutAt);
+
+    if (!Number.isFinite(startTimestamp) || !Number.isFinite(endTimestamp)) {
+      return false;
+    }
+
+    const durationMinutes = Math.floor((endTimestamp - startTimestamp) / 60000);
+    return durationMinutes >= INTEGRITY_THRESHOLDS.longSessionMinutes;
+  });
+
+  if (longCompletedSessionExists) {
+    return buildIntegrityFeedback(
+      "warning",
+      "One or more sessions exceed 12 hours. Verify for accidental missed check-out edits."
+    );
+  }
+
+  return buildIntegrityFeedback("valid", INTEGRITY_MESSAGES.VALID_DETAIL);
 }
 
 function validateEditTimes(entries, targetEntryId, nextCheckInAt, nextCheckOutAt) {

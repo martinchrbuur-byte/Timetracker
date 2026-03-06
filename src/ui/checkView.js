@@ -395,6 +395,27 @@ export function renderTrackerState(refs, state) {
   refs.statusLabel.classList.toggle("active", isActive);
   refs.statusLabel.classList.toggle("inactive", !isActive);
 
+  const integrityFeedback = state.integrityFeedback || {
+    level: "valid",
+    label: "Integrity: Valid",
+    detail: "No time conflicts detected.",
+  };
+
+  refs.integrityChip.textContent = integrityFeedback.label;
+  refs.integrityDetail.textContent = integrityFeedback.detail;
+  refs.integrityChip.classList.remove(
+    "integrity-chip--valid",
+    "integrity-chip--warning",
+    "integrity-chip--blocked"
+  );
+  refs.integrityChip.classList.add(
+    integrityFeedback.level === "blocked"
+      ? "integrity-chip--blocked"
+      : integrityFeedback.level === "warning"
+        ? "integrity-chip--warning"
+        : "integrity-chip--valid"
+  );
+
   refs.statusMeta.textContent = isActive
     ? `Started at: ${formatDateTime(state.activeEntry.checkInAt)}`
     : "No active session.";
