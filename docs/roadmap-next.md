@@ -18,6 +18,14 @@ Scope: Existing single-page work-hours tracker (check-in/out, history, edit time
 - ✅ Regression + E2E coverage for sign-up flow
 - 🟡 All other roadmap items remain planned
 
+### Accessibility Backlog (Planned)
+- 🟡 Full WCAG 2.1 AA contrast audit across light/dark tokens and component boundaries (text, placeholders, disabled states, focus visuals).
+- 🟡 `prefers-reduced-motion` support for panel, sheet, and metric animations.
+- 🟡 Skip-link support to bypass repeated top sections and jump directly to primary interactive content.
+- 🟡 Auth form semantic submission refinements (Enter submits current route action without pointer dependency).
+- 🟡 ARIA/live-region hardening pass to minimize redundant announcements and clarify dynamic state changes.
+- 🟡 Automated accessibility checks added to regression/e2e test flows.
+
 ## 1) Product Manager View
 
 ### Problem / Opportunity Analysis

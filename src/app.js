@@ -45,8 +45,24 @@ const PASSWORD_RULES = {
   hasLetter: /[A-Za-z]/,
   hasDigit: /\d/,
 };
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
 let confirmationRedirectTimerId = null;
+let openDialog = "";
+let restoreFocusElement = null;
+
+function buildEmptyAuthFieldErrors() {
+  return {
+    email: "",
+    password: "",
+    confirmPassword: "",
+  };
+}
+
+function getFirstAuthFieldError(fieldErrors) {
+  return fieldErrors.email || fieldErrors.password || fieldErrors.confirmPassword || "";
+}
 
 function normalizeAuthRoute(routeValue) {
   if (
@@ -58,17 +74,17 @@ function normalizeAuthRoute(routeValue) {
     return routeValue;
   }
 
-  return AUTH_ROUTES.LANDING;
+  return AUTH_ROUTES.SIGN_IN;
 }
 
 function readAuthRouteFromHash() {
   if (typeof window === "undefined") {
-    return AUTH_ROUTES.LANDING;
+    return AUTH_ROUTES.SIGN_IN;
   }
 
   const hash = (window.location.hash || "").replace(/^#/, "").trim().toLowerCase();
   if (!hash || hash === "app") {
-    return AUTH_ROUTES.LANDING;
+    return AUTH_ROUTES.SIGN_IN;
   }
 
   return normalizeAuthRoute(hash);
@@ -118,47 +134,60 @@ function mapSignUpErrorMessage(error) {
 }
 
 function validateSignUpInput(email, password, confirmPassword) {
+  const fieldErrors = buildEmptyAuthFieldErrors();
+
   if (!email) {
-    return "Email is required.";
+    fieldErrors.email = "Email is required.";
+    return fieldErrors;
   }
 
   if (!EMAIL_REGEX.test(email)) {
-    return "Please enter a valid email address.";
+    fieldErrors.email = "Please enter a valid email address.";
+    return fieldErrors;
   }
 
   if (!password) {
-    return "Password is required.";
+    fieldErrors.password = "Password is required.";
+    return fieldErrors;
   }
 
   if (password.length < PASSWORD_RULES.minLength) {
-    return "Password must be at least 8 characters.";
+    fieldErrors.password = "Password must be at least 8 characters.";
+    return fieldErrors;
   }
 
   if (!PASSWORD_RULES.hasLetter.test(password) || !PASSWORD_RULES.hasDigit.test(password)) {
-    return "Password must include at least one letter and one number.";
+    fieldErrors.password = "Password must include at least one letter and one number.";
+    return fieldErrors;
   }
 
   if (password !== confirmPassword) {
-    return "Password and confirm password do not match.";
+    fieldErrors.confirmPassword = "Password and confirm password do not match.";
+    return fieldErrors;
   }
 
-  return "";
+  return fieldErrors;
 }
 
 function validateSignInInput(email, password) {
+  const fieldErrors = buildEmptyAuthFieldErrors();
+
   if (!email) {
-    return "Email is required.";
+    fieldErrors.email = "Email is required.";
+    return fieldErrors;
   }
 
   if (!EMAIL_REGEX.test(email)) {
-    return "Please enter a valid email address.";
+    fieldErrors.email = "Please enter a valid email address.";
+    return fieldErrors;
   }
 
   if (!password) {
-    return "Password is required.";
+    fieldErrors.password = "Password is required.";
+    return fieldErrors;
   }
 
-  return "";
+  return fieldErrors;
 }
 
 function getPreferredThemeMode() {
@@ -198,6 +227,124 @@ function applyThemeMode(themeMode) {
 const rootElement = document.getElementById("app");
 const viewRefs = buildMainView(rootElement);
 
+function setAppContentInert(isInert) {
+  if (!viewRefs.appContent) {
+    return;
+  }
+
+  viewRefs.appContent.inert = isInert;
+  if (isInert) {
+    viewRefs.appContent.setAttribute("aria-hidden", "true");
+    return;
+  }
+
+  viewRefs.appContent.removeAttribute("aria-hidden");
+}
+
+function beginDialogOpen(dialogName, initialFocusElement) {
+  openDialog = dialogName;
+  restoreFocusElement =
+    document.activeElement instanceof HTMLElement ? document.activeElement : restoreFocusElement;
+  setAppContentInert(true);
+  if (initialFocusElement instanceof HTMLElement) {
+    initialFocusElement.focus();
+  }
+}
+
+function finishDialogClose(dialogName) {
+  if (openDialog === dialogName) {
+    openDialog = "";
+  }
+
+  if (!viewRefs.editSheet.hidden || !viewRefs.passwordSheet.hidden) {
+    return;
+  }
+
+  setAppContentInert(false);
+  if (restoreFocusElement && restoreFocusElement.isConnected && !restoreFocusElement.hasAttribute("disabled")) {
+    restoreFocusElement.focus();
+  }
+  restoreFocusElement = null;
+}
+
+function getOpenDialogPanel() {
+  if (!viewRefs.editSheet.hidden) {
+    return viewRefs.editSheetPanel;
+  }
+
+  if (!viewRefs.passwordSheet.hidden) {
+    return viewRefs.passwordSheetPanel;
+  }
+
+  return null;
+}
+
+function trapDialogFocus(event, dialogPanel) {
+  if (event.key !== "Tab") {
+    return;
+  }
+
+  const focusableElements = Array.from(dialogPanel.querySelectorAll(FOCUSABLE_SELECTOR));
+  if (focusableElements.length === 0) {
+    event.preventDefault();
+    dialogPanel.focus();
+    return;
+  }
+
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+  const activeElement = document.activeElement;
+
+  if (event.shiftKey && activeElement === firstElement) {
+    event.preventDefault();
+    lastElement.focus();
+    return;
+  }
+
+  if (!event.shiftKey && activeElement === lastElement) {
+    event.preventDefault();
+    firstElement.focus();
+  }
+}
+
+function handleTabListKeydown(event) {
+  const currentTab = event.target.closest('[role="tab"]');
+  if (!currentTab) {
+    return;
+  }
+
+  if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) {
+    return;
+  }
+
+  const tabButtons = Array.from(event.currentTarget.querySelectorAll('[role="tab"]'));
+  const currentIndex = tabButtons.indexOf(currentTab);
+  if (currentIndex < 0) {
+    return;
+  }
+
+  event.preventDefault();
+
+  let nextIndex = currentIndex;
+  if (event.key === "ArrowRight") {
+    nextIndex = (currentIndex + 1) % tabButtons.length;
+  } else if (event.key === "ArrowLeft") {
+    nextIndex = (currentIndex - 1 + tabButtons.length) % tabButtons.length;
+  } else if (event.key === "Home") {
+    nextIndex = 0;
+  } else if (event.key === "End") {
+    nextIndex = tabButtons.length - 1;
+  }
+
+  const nextTab = tabButtons[nextIndex];
+  if (!(nextTab instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  nextTab.click();
+  nextTab.focus();
+}
+
 let appState = {
   isAuthenticated: false,
   authUserId: null,
@@ -207,12 +354,13 @@ let appState = {
   activeEntry: null,
   themeMode: getPreferredThemeMode(),
   syncStatus: getSyncStatus(),
-  authRoute: AUTH_ROUTES.LANDING,
+  authRoute: AUTH_ROUTES.SIGN_IN,
   authUi: {
     isSubmitting: false,
     validationMessage: "",
     successMessage: "",
     loadingLabel: "",
+    fieldErrors: buildEmptyAuthFieldErrors(),
   },
   confirmationTitle: "Check your email",
   confirmationMessage: "",
@@ -271,6 +419,7 @@ function setAuthRoute(nextRoute, { replaceHash = false } = {}) {
       successMessage: "",
       loadingLabel: "",
       isSubmitting: false,
+      fieldErrors: buildEmptyAuthFieldErrors(),
     },
   });
 
@@ -340,7 +489,7 @@ function openEditSheet(entryId) {
   viewRefs.editCheckInInput.value = toLocalDateTimeInputValue(entry.checkInAt);
   viewRefs.editCheckOutInput.value = toLocalDateTimeInputValue(entry.checkOutAt);
   viewRefs.editSheet.hidden = false;
-  viewRefs.editCheckInInput.focus();
+  beginDialogOpen("edit", viewRefs.editCheckInInput);
 }
 
 function closeEditSheet() {
@@ -348,6 +497,7 @@ function closeEditSheet() {
   viewRefs.editEntryIdInput.value = "";
   viewRefs.editCheckInInput.value = "";
   viewRefs.editCheckOutInput.value = "";
+  finishDialogClose("edit");
 }
 
 function openPasswordSheet() {
@@ -355,7 +505,7 @@ function openPasswordSheet() {
   viewRefs.passwordNewInput.value = "";
   viewRefs.passwordConfirmInput.value = "";
   viewRefs.passwordSheet.hidden = false;
-  viewRefs.passwordCurrentInput.focus();
+  beginDialogOpen("password", viewRefs.passwordCurrentInput);
 }
 
 function closePasswordSheet() {
@@ -363,6 +513,7 @@ function closePasswordSheet() {
   viewRefs.passwordCurrentInput.value = "";
   viewRefs.passwordNewInput.value = "";
   viewRefs.passwordConfirmInput.value = "";
+  finishDialogClose("password");
 }
 
 async function refreshEntriesForCurrentUser() {
@@ -434,6 +585,7 @@ async function initialize() {
         validationMessage: "",
         successMessage: "",
         loadingLabel: "",
+        fieldErrors: buildEmptyAuthFieldErrors(),
       },
       confirmationTitle: "Check your email",
       confirmationMessage: "",
@@ -565,6 +717,8 @@ function handleActiveEditClick() {
 }
 
 function handleSheetKeydown(event) {
+  const openDialogPanel = getOpenDialogPanel();
+
   if (event.key === "Escape" && !viewRefs.editSheet.hidden) {
     closeEditSheet();
     return;
@@ -572,6 +726,11 @@ function handleSheetKeydown(event) {
 
   if (event.key === "Escape" && !viewRefs.passwordSheet.hidden) {
     closePasswordSheet();
+    return;
+  }
+
+  if (openDialogPanel) {
+    trapDialogFocus(event, openDialogPanel);
   }
 }
 
@@ -718,6 +877,7 @@ async function applyAuthenticatedUser(user, message) {
       validationMessage: "",
       successMessage: "",
       loadingLabel: "",
+      fieldErrors: buildEmptyAuthFieldErrors(),
     },
     confirmationMessage: "",
     message,
@@ -745,6 +905,7 @@ function setAuthSubmittingState(isSubmitting, loadingLabel = "") {
       isSubmitting,
       loadingLabel,
       validationMessage: isSubmitting ? "" : appState.authUi.validationMessage,
+      fieldErrors: isSubmitting ? buildEmptyAuthFieldErrors() : appState.authUi.fieldErrors,
     },
   });
   render();
@@ -766,8 +927,14 @@ function handleOpenSignIn() {
 
 function handleBackToLanding() {
   clearConfirmationRedirectTimer();
-  setAuthRoute(AUTH_ROUTES.LANDING);
+  const nextRoute = appState.authRoute === AUTH_ROUTES.SIGN_IN ? AUTH_ROUTES.SIGN_UP : AUTH_ROUTES.LANDING;
+  setAuthRoute(nextRoute);
   render();
+  if (nextRoute === AUTH_ROUTES.SIGN_UP) {
+    viewRefs.authEmailInput.focus();
+    return;
+  }
+
   viewRefs.landingCreateAccountButton.focus();
 }
 
@@ -780,7 +947,8 @@ function handleConfirmationContinue() {
 
 async function handleSignUp() {
   const { email, password, confirmPassword } = readAuthFormValues();
-  const validationMessage = validateSignUpInput(email, password, confirmPassword);
+  const fieldErrors = validateSignUpInput(email, password, confirmPassword);
+  const validationMessage = getFirstAuthFieldError(fieldErrors);
   if (validationMessage) {
     patchState({
       authUi: {
@@ -788,6 +956,7 @@ async function handleSignUp() {
         validationMessage,
         successMessage: "",
         loadingLabel: "",
+        fieldErrors,
       },
       message: `Sign-up failed: ${validationMessage}`,
     });
@@ -810,6 +979,7 @@ async function handleSignUp() {
           validationMessage: "",
           successMessage: "Account created. Awaiting email confirmation.",
           loadingLabel: "",
+          fieldErrors: buildEmptyAuthFieldErrors(),
         },
         message: "Sign-up successful. Verify your email, then sign in.",
       });
@@ -830,6 +1000,7 @@ async function handleSignUp() {
         validationMessage: mappedMessage,
         successMessage: "",
         loadingLabel: "",
+        fieldErrors: buildEmptyAuthFieldErrors(),
       },
       message: `Sign-up failed: ${mappedMessage}`,
     });
@@ -842,6 +1013,7 @@ async function handleSignUp() {
       ...appState.authUi,
       isSubmitting: false,
       loadingLabel: "",
+      fieldErrors: buildEmptyAuthFieldErrors(),
     },
   });
   render();
@@ -859,7 +1031,8 @@ function mapSignInErrorMessage(error) {
 
 async function handleSignIn() {
   const { email, password } = readAuthFormValues();
-  const validationMessage = validateSignInInput(email, password);
+  const fieldErrors = validateSignInInput(email, password);
+  const validationMessage = getFirstAuthFieldError(fieldErrors);
   if (validationMessage) {
     patchState({
       authUi: {
@@ -867,6 +1040,7 @@ async function handleSignIn() {
         validationMessage,
         successMessage: "",
         loadingLabel: "",
+        fieldErrors,
       },
       message: `Sign-in failed: ${validationMessage}`,
     });
@@ -888,6 +1062,7 @@ async function handleSignIn() {
         validationMessage: mappedMessage,
         successMessage: "",
         loadingLabel: "",
+        fieldErrors: buildEmptyAuthFieldErrors(),
       },
       message: `Sign-in failed: ${mappedMessage}`,
     });
@@ -900,6 +1075,7 @@ async function handleSignIn() {
       ...appState.authUi,
       isSubmitting: false,
       loadingLabel: "",
+      fieldErrors: buildEmptyAuthFieldErrors(),
     },
   });
   render();
@@ -929,12 +1105,13 @@ async function handleSignOut() {
       currentUserId: "default",
       entries: [],
       activeEntry: null,
-      authRoute: AUTH_ROUTES.LANDING,
+      authRoute: AUTH_ROUTES.SIGN_IN,
       authUi: {
         isSubmitting: false,
         validationMessage: "",
         successMessage: "",
         loadingLabel: "",
+        fieldErrors: buildEmptyAuthFieldErrors(),
       },
       confirmationMessage: "",
       syncStatus: getSyncStatus(),
@@ -942,7 +1119,7 @@ async function handleSignOut() {
     };
     closeEditSheet();
     closePasswordSheet();
-    syncHashRoute({ isAuthenticated: false, authRoute: AUTH_ROUTES.LANDING, replace: true });
+    syncHashRoute({ isAuthenticated: false, authRoute: AUTH_ROUTES.SIGN_IN, replace: true });
     render();
   } catch (error) {
     appState = {
@@ -972,8 +1149,10 @@ viewRefs.passwordSheetBackdrop.addEventListener("click", closePasswordSheet);
 viewRefs.passwordSaveButton.addEventListener("click", handleChangePasswordSave);
 viewRefs.dayOverviewTodayButton.addEventListener("click", handleOverviewTodayClick);
 viewRefs.dayOverviewHistoricButton.addEventListener("click", handleOverviewHistoricClick);
+viewRefs.dayOverviewModeGroup.addEventListener("keydown", handleTabListKeydown);
 viewRefs.dayOverviewHistoricDate.addEventListener("change", handleOverviewHistoricDateChange);
 viewRefs.dayOverviewRangeGroup.addEventListener("click", handleOverviewRangeClick);
+viewRefs.dayOverviewRangeGroup.addEventListener("keydown", handleTabListKeydown);
 viewRefs.dayOverviewCopyButton.addEventListener("click", handleOverviewCopyClick);
 viewRefs.themeToggleButton.addEventListener("click", handleThemeToggleClick);
 viewRefs.authSignInButton.addEventListener("click", handleSignIn);

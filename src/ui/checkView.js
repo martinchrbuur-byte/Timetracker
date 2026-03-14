@@ -314,6 +314,10 @@ export function renderTrackerState(refs, state) {
   const isSignInRoute = authRoute === "signin";
   const isConfirmationRoute = authRoute === "confirmation";
   const authUi = state.authUi || {};
+  const fieldErrors = authUi.fieldErrors || {};
+  const emailError = fieldErrors.email || "";
+  const passwordError = fieldErrors.password || "";
+  const confirmPasswordError = fieldErrors.confirmPassword || "";
   const isAuthSubmitting = Boolean(authUi.isSubmitting);
 
   refs.trackerPanel.hidden = isAuthenticated || authRoute !== "landing";
@@ -325,9 +329,35 @@ export function renderTrackerState(refs, state) {
   refs.authFormSubtitle.textContent = isSignUpRoute
     ? "Use a valid email and a strong password."
     : "Enter your account email and password.";
+  refs.authConfirmPasswordLabel.hidden = !isSignUpRoute;
   refs.authConfirmPasswordInput.hidden = !isSignUpRoute;
   refs.authConfirmPasswordInput.disabled = isAuthenticated || !isSignUpRoute || isAuthSubmitting;
+  refs.authConfirmPasswordInput.required = isSignUpRoute;
+  refs.authConfirmPasswordInput.setAttribute("aria-invalid", String(Boolean(confirmPasswordError)));
   refs.authPasswordInput.setAttribute("autocomplete", isSignUpRoute ? "new-password" : "current-password");
+  refs.authEmailInput.setAttribute("aria-invalid", String(Boolean(emailError)));
+  refs.authPasswordInput.setAttribute("aria-invalid", String(Boolean(passwordError)));
+  refs.authEmailError.textContent = emailError;
+  refs.authEmailError.hidden = !emailError;
+  refs.authPasswordError.textContent = passwordError;
+  refs.authPasswordError.hidden = !passwordError;
+  refs.authConfirmPasswordError.textContent = isSignUpRoute ? confirmPasswordError : "";
+  refs.authConfirmPasswordError.hidden = !isSignUpRoute || !confirmPasswordError;
+  refs.authEmailInput.setAttribute("aria-describedby", emailError ? "auth-email-error" : "");
+  refs.authPasswordInput.setAttribute(
+    "aria-describedby",
+    isSignUpRoute
+      ? passwordError
+        ? "auth-password-rules auth-password-error"
+        : "auth-password-rules"
+      : passwordError
+        ? "auth-password-error"
+        : ""
+  );
+  refs.authConfirmPasswordInput.setAttribute(
+    "aria-describedby",
+    isSignUpRoute && confirmPasswordError ? "auth-confirm-password-error" : ""
+  );
   refs.authPasswordRules.hidden = !isSignUpRoute;
   refs.authSignInButton.hidden = isAuthenticated || !isSignInRoute;
   refs.authSignUpButton.hidden = isAuthenticated || !isSignUpRoute;
@@ -437,6 +467,8 @@ export function renderTrackerState(refs, state) {
   refs.dayOverviewHistoricButton.classList.toggle("is-active", !dayOverview.isTodayMode);
   refs.dayOverviewTodayButton.setAttribute("aria-selected", String(dayOverview.isTodayMode));
   refs.dayOverviewHistoricButton.setAttribute("aria-selected", String(!dayOverview.isTodayMode));
+  refs.dayOverviewTodayButton.tabIndex = dayOverview.isTodayMode ? 0 : -1;
+  refs.dayOverviewHistoricButton.tabIndex = dayOverview.isTodayMode ? -1 : 0;
   refs.dayOverviewHistoricTools.hidden = dayOverview.isTodayMode;
   refs.dayOverviewRangeWeekButton.classList.toggle("is-active", dayOverview.historicRange === "week");
   refs.dayOverviewRangeMonthButton.classList.toggle("is-active", dayOverview.historicRange === "month");
@@ -444,6 +476,9 @@ export function renderTrackerState(refs, state) {
   refs.dayOverviewRangeWeekButton.setAttribute("aria-selected", String(dayOverview.historicRange === "week"));
   refs.dayOverviewRangeMonthButton.setAttribute("aria-selected", String(dayOverview.historicRange === "month"));
   refs.dayOverviewRangeYearButton.setAttribute("aria-selected", String(dayOverview.historicRange === "year"));
+  refs.dayOverviewRangeWeekButton.tabIndex = dayOverview.historicRange === "week" ? 0 : -1;
+  refs.dayOverviewRangeMonthButton.tabIndex = dayOverview.historicRange === "month" ? 0 : -1;
+  refs.dayOverviewRangeYearButton.tabIndex = dayOverview.historicRange === "year" ? 0 : -1;
   refs.dayOverviewHistoricDate.hidden = dayOverview.isTodayMode;
   refs.dayOverviewHistoricDate.value = state.dayOverviewDateISO;
 

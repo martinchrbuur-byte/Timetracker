@@ -1,4 +1,5 @@
 const VIEW_SELECTORS = {
+  appContent: "#app-content",
   trackerPanel: "#tracker-panel",
   landingPanel: "#landing-panel",
   landingCreateAccountButton: "#landing-create-account-btn",
@@ -8,7 +9,11 @@ const VIEW_SELECTORS = {
   authFormSubtitle: "#auth-form-subtitle",
   authEmailInput: "#auth-email",
   authPasswordInput: "#auth-password",
+  authConfirmPasswordLabel: "#auth-confirm-password-label",
   authConfirmPasswordInput: "#auth-confirm-password",
+  authEmailError: "#auth-email-error",
+  authPasswordError: "#auth-password-error",
+  authConfirmPasswordError: "#auth-confirm-password-error",
   authValidationMessage: "#auth-validation-message",
   authPasswordRules: "#auth-password-rules",
   authLoadingLabel: "#auth-loading-label",
@@ -36,6 +41,7 @@ const VIEW_SELECTORS = {
   editActiveButton: "#edit-active-btn",
   dayOverviewTitle: "#day-overview-title",
   dayOverviewDate: "#day-overview-date",
+  dayOverviewModeGroup: "#day-overview-mode-group",
   dayOverviewTodayButton: "#day-overview-today-btn",
   dayOverviewHistoricButton: "#day-overview-historic-btn",
   dayOverviewHistoricDate: "#day-overview-historic-date",
@@ -64,6 +70,7 @@ const VIEW_SELECTORS = {
   checkOutButton: "#check-out-btn",
   historyBody: "#history-body",
   editSheet: "#edit-sheet",
+  editSheetPanel: "#edit-sheet-panel",
   editSheetBackdrop: "#edit-sheet-backdrop",
   editEntryIdInput: "#edit-entry-id",
   editCheckInInput: "#edit-check-in",
@@ -72,6 +79,7 @@ const VIEW_SELECTORS = {
   editCancelButton: "#edit-cancel-btn",
   editSaveButton: "#edit-save-btn",
   passwordSheet: "#password-sheet",
+  passwordSheetPanel: "#password-sheet-panel",
   passwordSheetBackdrop: "#password-sheet-backdrop",
   passwordCurrentInput: "#password-current",
   passwordNewInput: "#password-new",
@@ -90,6 +98,7 @@ export function buildMainView(rootElement) {
   // This file only owns static structure and element lookup.
   // Dynamic values are injected by checkView.
   rootElement.innerHTML = `
+    <div id="app-content">
     <section id="tracker-panel" class="panel" aria-labelledby="app-title">
       <h1 id="app-title">Work Hours Tracker</h1>
       <p class="subtitle">Track check-in/check-out timestamps locally in your browser.</p>
@@ -113,17 +122,20 @@ export function buildMainView(rootElement) {
       <p id="auth-form-subtitle" class="subtitle">Use a valid email and a strong password.</p>
       <label class="field-label" for="auth-email">Email</label>
       <input id="auth-email" class="field-input" type="email" autocomplete="email" />
+      <p id="auth-email-error" class="status-meta field-error" hidden></p>
 
       <label class="field-label" for="auth-password">Password</label>
       <input id="auth-password" class="field-input" type="password" autocomplete="new-password" />
+      <p id="auth-password-error" class="status-meta field-error" hidden></p>
 
-      <label class="field-label" for="auth-confirm-password">Confirm password</label>
+      <label id="auth-confirm-password-label" class="field-label" for="auth-confirm-password">Confirm password</label>
       <input
         id="auth-confirm-password"
         class="field-input"
         type="password"
         autocomplete="new-password"
       />
+      <p id="auth-confirm-password-error" class="status-meta field-error" hidden></p>
 
       <p id="auth-password-rules" class="field-help">
         Minimum 8 characters, including at least one letter and one number.
@@ -182,7 +194,7 @@ export function buildMainView(rootElement) {
     <section id="day-overview-panel" class="panel day-overview" aria-labelledby="day-overview-title">
       <div class="day-overview__header">
         <h2 id="day-overview-title">Day Overview</h2>
-        <div class="day-overview__mode" role="tablist" aria-label="Day overview mode">
+        <div id="day-overview-mode-group" class="day-overview__mode" role="tablist" aria-label="Day overview mode">
           <button
             id="day-overview-today-btn"
             class="overview-tab is-active"
@@ -313,10 +325,12 @@ export function buildMainView(rootElement) {
         aria-label="Recent work sessions"
       ></div>
     </section>
+    </div>
 
     <div id="edit-sheet" class="edit-sheet" hidden>
       <div id="edit-sheet-backdrop" class="edit-sheet-backdrop" aria-hidden="true"></div>
       <section
+        id="edit-sheet-panel"
         class="edit-sheet-panel"
         role="dialog"
         aria-modal="true"
@@ -344,6 +358,7 @@ export function buildMainView(rootElement) {
     <div id="password-sheet" class="edit-sheet" hidden>
       <div id="password-sheet-backdrop" class="edit-sheet-backdrop" aria-hidden="true"></div>
       <section
+        id="password-sheet-panel"
         class="edit-sheet-panel"
         role="dialog"
         aria-modal="true"
