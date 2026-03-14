@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Work Hours Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <h1>Work Hours Tracker</h1>
+      <p class="sub">Vanilla JS front end · local Java backend</p>
+    </header>
+
+    <section class="panel">
+      <h2>Status</h2>
+      <p id="statusText">Loading...</p>
+      <p id="todayTotal">Today total: --:--:--</p>
+    </section>
+
+    <section class="panel actions">
+      <button id="checkInBtn" class="btn primary">Check in</button>
+      <button id="checkOutBtn" class="btn">Check out</button>
+      <button id="refreshBtn" class="btn ghost">Refresh</button>
+    </section>
+
+    <section class="panel" aria-live="polite">
+      <h2>Feedback</h2>
+      <p id="feedbackText">Ready</p>
+    </section>
+
+    <section class="panel">
+      <div class="history-head">
+        <h2>History</h2>
+        <button id="reloadHistoryBtn" class="btn ghost">Reload history</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Check-in</th>
+              <th>Check-out</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

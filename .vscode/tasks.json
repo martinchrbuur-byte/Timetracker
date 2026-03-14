@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Work Hours Tracker",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "New-Item -ItemType Directory -Force out | Out-Null; javac --add-modules jdk.httpserver -d out (Get-ChildItem -Recurse src/main/java/*.java | ForEach-Object { $_.FullName })"
+      ],
+      "group": "build"
+    },
+    {
+      "label": "Run Work Hours Tracker",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "if (-not (Test-Path out)) { New-Item -ItemType Directory -Force out | Out-Null; javac --add-modules jdk.httpserver -d out (Get-ChildItem -Recurse src/main/java/*.java | ForEach-Object { $_.FullName }) }; java --add-modules jdk.httpserver -cp out app.Main"
+      ],
+      "group": "test"
+    }
+  ]
+}
