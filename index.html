@@ -1,16 +1,23 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Work Hours Tracker</title>
-    <link rel="icon" type="image/svg+xml" href="./public/app-icon.svg" />
-    <link rel="apple-touch-icon" href="./public/app-icon.svg" />
-    <link rel="stylesheet" href="./public/styles.css" />
-  </head>
-  <body>
-    <main id="app" class="app-shell"></main>
-    <script src="./public/app-config.js"></script>
-    <script type="module" src="./src/app.js"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <meta name="theme-color" content="#08101f">
+  <title>Eternal Bastion — Tower Defense</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="topbar">
+      <div class="brand"><span class="sigil">✦</span><div><b>ETERNAL BASTION</b><small>WARDEN PROTOCOL</small></div></div>
+      <div class="top-actions"><button class="icon-btn" id="soundBtn" title="Toggle sound">♫</button><button class="icon-btn" id="pauseBtn" title="Pause">Ⅱ</button></div>
+    </header>
+    <main id="screen" class="screen"></main>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="js/save.js"></script><script src="js/audio.js"></script><script src="js/towers.js"></script>
+  <script src="js/enemies.js"></script><script src="js/maps.js"></script><script src="js/waves.js"></script><script src="js/upgrades.js"></script>
+  <script src="js/engine.js"></script><script src="js/ui.js"></script><script src="js/game.js"></script>
+</body>
 </html>

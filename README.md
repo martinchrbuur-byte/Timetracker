@@ -1,45 +1,17 @@
-# Work Hours Tracker (V1)
+# Eternal Bastion
 
-Simple Java application with a vanilla JavaScript front end for recording workday check-in and check-out timestamps.
+**Eternal Bastion** is a standalone, dependency-free browser tower defense game. Build a defense, survive escalating waves, and spend persistent Eternal Shards on legacy upgrades.
 
-## Run in VS Code (no paid dependencies)
+## Play
 
-Prerequisites:
-- JDK 17+
+Open `index.html` directly, or enable GitHub Pages for the repository root. No backend, build step, fonts, images, or network requests are required. Audio is generated with the Web Audio API and gracefully falls back to silence when unavailable.
 
-Quick run (PowerShell):
+## Features
 
-```powershell
-New-Item -ItemType Directory -Force out | Out-Null
-javac --add-modules jdk.httpserver -d out (Get-ChildItem -Recurse src/main/java/*.java | ForEach-Object { $_.FullName })
-java --add-modules jdk.httpserver -cp out app.Main
-```
+- Five named theaters with distinct handcrafted paths: Verdant Ruins, Glacial Divide, Ember Foundry, The Shattered Void, and Celestial Crown
+- Twelve distinct towers (splash, slow, chain, poison, beam, critical, push, execute and support-style roles)
+- 20 enemy types and 10 named bosses across 100 authored campaign waves, followed by endless scaling
+- Endless frontier after wave 100, wave-based rewards, three five-tier upgrade paths for every tower, and a persistent localStorage legacy
+- Map selection screen, arsenal screen, pause/speed controls, game-over flow and procedural audio
 
-Then open `http://localhost:8080` in your browser.
-
-## Use VS Code Live Server for the UI
-
-1. Start the Java backend:
-
-```powershell
-java --add-modules jdk.httpserver -cp out app.Main
-```
-
-2. In VS Code, right-click `web/index.html` and choose **Open with Live Server**.
-3. The frontend will call the backend at `http://localhost:8080` automatically.
-
-Optional: override backend URL by adding query parameter, for example:
-- `http://127.0.0.1:5500/web/index.html?apiBase=http://localhost:8080`
-
-## Data storage
-
-- Data is saved locally in `data/time-entries.csv`.
-- V1 uses local persistence only.
-- GitHub deployment and Supabase integration are planned for future versions.
-
-## Docs
-
-- `docs/requirements.md`
-- `docs/design.md`
-- `docs/implementation-plan.md`
-- `docs/roadmap.md`
+All game code lives in `js/`, presentation in `css/`, and optional asset placeholders are in `assets/`.

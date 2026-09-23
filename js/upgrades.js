@@ -1,0 +1,1 @@
+window.Meta=(()=>{const costs={damage:70,health:80,income:100};function buy(k){const s=BastionSave.get(),lvl=s.upgrades[k]||0,c=costs[k]*(lvl+1);if(s.shards<c)return false;s.shards-=c;s.upgrades[k]=lvl+1;BastionSave.save();return true}return{buy,cost:k=>costs[k]*((BastionSave.get().upgrades[k]||0)+1)}})();
