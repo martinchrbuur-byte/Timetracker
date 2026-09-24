@@ -4,7 +4,7 @@
 
 ## Play
 
-Open `index.html` directly, or enable GitHub Pages for the repository root. No backend, build step, fonts, images, or network requests are required. Audio is generated with the Web Audio API and gracefully falls back to silence when unavailable.
+Open `index.html` directly, or enable GitHub Pages for the repository root. The game starts immediately without a login or account. No backend, build step, fonts, images, or network requests are required. Audio is generated with the Web Audio API and gracefully falls back to silence when unavailable.
 
 ## Features
 
