@@ -97,6 +97,9 @@
 
   function showHome() {
     state = "home";
+    score = 0;
+    distance = 0;
+    hearts = 3;
     ui.screen.hidden = false;
     ui.pauseCard.hidden = true;
     ui.pause.hidden = true;
@@ -193,9 +196,18 @@
     });
 
     for (const star of stars) {
-      if (!star.collected && Math.abs(star.at - distance) < 32) {
+      const heroTop = GROUND - jumpHeight - 57;
+      const heroBottom = GROUND - jumpHeight;
+      const starTop = star.y - 15;
+      const starBottom = star.y + 15;
+      if (
+        !star.collected
+        && Math.abs(star.at - distance) < 32
+        && starBottom >= heroTop
+        && starTop <= heroBottom
+      ) {
         star.collected = true;
-        score += 10;
+        score += 1;
         tone(880, 0.08);
       }
     }
@@ -216,7 +228,6 @@
     }
 
     if (distance >= RUN_LENGTH) {
-      score += 50;
       updateHud();
       finish(true);
       return;

@@ -109,6 +109,12 @@ canvas { display: block; width: 100%; height: 100%; }
   .game-hint { top: 5px; padding: 5px 9px; font-size: 10px; }
 }
 
+@media (max-width: 420px) {
+  .stage { display: grid; place-items: center; aspect-ratio: auto; }
+  canvas { grid-area: 1 / 1; height: auto; align-self: center; }
+  .screen-card { position: relative; top: auto; left: auto; grid-area: 1 / 1; margin: 12px auto; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
