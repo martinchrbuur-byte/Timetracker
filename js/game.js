@@ -57,11 +57,9 @@
   let jumpHeight = 0;
   let jumpVelocity = 0;
   let invulnerable = 0;
-  let dragonMood = 0;
   let obstacles = [];
   let stars = [];
   let clouds = [];
-  let messageTimer = 0;
 
   function persist() {
     try {
@@ -127,7 +125,6 @@
       at,
       hit: false,
       kind: index % 3 === 1 ? "log" : "rock",
-      size: index % 3 === 1 ? 46 : 36,
     }));
     stars = [];
     for (let at = 240; at < RUN_LENGTH - 100; at += 115) {
@@ -166,6 +163,8 @@
 
   function finish(won) {
     state = "result";
+    save.best = Math.max(save.best, score);
+    persist();
     ui.pause.hidden = true;
     ui.jump.hidden = true;
     ui.hint.hidden = true;
@@ -209,7 +208,6 @@
       if (jumpHeight < 52 && invulnerable === 0) {
         hearts -= 1;
         invulnerable = 1.2;
-        dragonMood += 1.5;
         tone(220, 0.18, "triangle");
         if (hearts === 0) {
           updateHud();
@@ -221,8 +219,6 @@
 
     if (distance >= RUN_LENGTH) {
       score += 50;
-      save.best = Math.max(save.best, score);
-      persist();
       updateHud();
       finish(true);
       return;
