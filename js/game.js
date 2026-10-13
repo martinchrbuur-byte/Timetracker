@@ -402,7 +402,7 @@
     ctx.lineTo(0, GROUND);
     ctx.fill();
 
-    const castleX = 835 + Math.max(0, RUN_LENGTH - distance - 420) * 0.7;
+    const castleX = state === "home" ? 760 : 245 + Math.max(0, RUN_LENGTH - distance) * 0.7;
     if (state === "home" || distance > RUN_LENGTH - 700) drawCastle(castleX, GROUND);
     ctx.fillStyle = "#79c96f";
     ctx.fillRect(0, GROUND, WIDTH, HEIGHT - GROUND);
@@ -419,7 +419,7 @@
       ctx.fill();
     }
     for (const obstacle of obstacles) {
-      const x = WIDTH * 0.69 + (obstacle.at - distance) * 1.04;
+      const x = 245 + (obstacle.at - distance) * 1.04;
       if (x < -70 || x > WIDTH + 70 || obstacle.hit) continue;
       if (obstacle.kind === "log") {
         roundedRect(x - 28, GROUND - 22, 56, 24, 11, "#9b684b");
@@ -443,7 +443,7 @@
 
     for (const star of stars) {
       if (star.collected) continue;
-      const x = WIDTH * 0.69 + (star.at - distance) * 1.04;
+      const x = 245 + (star.at - distance) * 1.04;
       if (x < -30 || x > WIDTH + 30) continue;
       const shimmer = Math.sin(elapsed * 5 + star.at) * 3;
       ctx.save();
