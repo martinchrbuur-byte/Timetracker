@@ -119,7 +119,6 @@
     jumpHeight = 0;
     jumpVelocity = 0;
     invulnerable = 0;
-    dragonMood = 0;
     elapsed = 0;
     obstacles = obstaclesAt.map((at, index) => ({
       at,
@@ -188,7 +187,6 @@
     if (jumpHeight === 0) jumpVelocity = 0;
     else jumpVelocity -= 1750 * delta;
     invulnerable = Math.max(0, invulnerable - delta);
-    dragonMood += delta;
     clouds.forEach((cloud) => {
       cloud.x -= 9 * delta;
       if (cloud.x < -80) cloud.x = WIDTH + 60;
