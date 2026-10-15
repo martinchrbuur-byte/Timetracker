@@ -30,3 +30,15 @@ test("player can jump by touching the game and get the iPhone fullscreen instruc
   await page.locator("#game-canvas").dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true });
   await expect(page.getByRole("button", { name: "Hop" })).toBeVisible();
 });
+
+test("iPhone home-screen mode fills the viewport without transient gameplay popups", async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 932 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "standalone", { configurable: true, value: true });
+  });
+  await page.goto("/");
+
+  await expect(page.locator("body")).toHaveClass(/fullscreen-mode/);
+  await expect(page.locator("#game-hint")).toHaveCount(0);
+  await expect(page.locator("main")).toHaveCSS("height", "932px");
+});

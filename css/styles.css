@@ -81,7 +81,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .pause-card > strong { font-size: 24px; }
 .text-button { border: 0; background: transparent; color: #61798b; font-weight: 800; text-decoration: underline; cursor: pointer; }
 [hidden] { display: none !important; }
-.game-hint { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 7px 13px; border-radius: 14px; background: #fffef0e8; color: #526d7a; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .fullscreen-hint { margin: 8px 0 0; color: var(--muted); text-align: center; font-size: 12px; font-weight: 800; }
 
 .game-footer { min-height: 69px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 16px; background: #fff; }
@@ -92,6 +91,8 @@ canvas { display: block; width: 100%; height: 100%; }
 .footer-note { margin: 17px 0 0; color: #78909a; text-align: center; font-size: 12px; font-weight: 700; }
 
 body.fullscreen-mode {
+  height: 100vh;
+  height: 100dvh;
   min-height: 100dvh;
   overflow: hidden;
 }
@@ -99,6 +100,8 @@ body.fullscreen-mode {
 .fullscreen-mode .game-shell {
   display: flex;
   width: 100%;
+  max-width: none;
+  height: 100vh;
   height: 100dvh;
   flex-direction: column;
   gap: 6px;
@@ -139,7 +142,6 @@ body.fullscreen-mode {
   .tip { max-width: 62%; font-size: 10px; line-height: 1.25; }
   .tip span:first-child { font-size: 16px; }
   .jump-button { min-width: 92px; min-height: 43px; border-radius: 14px; font-size: 14px; }
-  .game-hint { top: 5px; padding: 5px 9px; font-size: 10px; }
   .fullscreen-mode .scorebar { min-height: 46px; padding: 5px 9px; }
   .fullscreen-mode .game-footer { min-height: 50px; padding: 5px 8px; }
   .fullscreen-mode .jump-button { min-height: 42px; }
