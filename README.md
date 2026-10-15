@@ -1,17 +1,13 @@
-# Eternal Bastion
+# Drageflugt – Løb til slottet!
 
-**Eternal Bastion** is a standalone, dependency-free browser tower defense game. Build a defense, survive escalating waves, and spend persistent Eternal Shards on legacy upgrades.
+Et lille, hyggeligt løbeeventyr på dansk. Hjælp Liva med at slippe væk fra de fjollede drager, hop over sten og træstammer, saml stjerner, og nå det trygge slot.
 
-## Play
+## Sådan spiller du
 
-Open `index.html` directly, or enable GitHub Pages for the repository root. The game starts immediately without a login or account. No backend, build step, fonts, images, or network requests are required. Audio is generated with the Web Audio API and gracefully falls back to silence when unavailable.
+- Åbn `index.html` i en moderne browser, eller udgiv repository-roden med GitHub Pages.
+- Liva løber selv. Hop med **mellemrum**, **↑**, **W** eller den store **HOP!**-knap.
+- Saml de gyldne stjerner for point. Hvis Liva rammer en forhindring, mister hun et hjerte. Hun har tre hjerter.
+- Nå slottet for at vinde. Du kan altid prøve igen.
+- Brug pauseknappen eller **Esc**/**P** for at holde pause. Lyden kan slås til og fra.
 
-## Features
-
-- Five named theaters with distinct handcrafted paths: Verdant Ruins, Glacial Divide, Ember Foundry, The Shattered Void, and Celestial Crown
-- Twelve distinct towers (splash, slow, chain, poison, beam, critical, push, execute and support-style roles)
-- 20 enemy types and 10 named bosses across 100 authored campaign waves, followed by endless scaling
-- Endless frontier after wave 100, wave-based rewards, three five-tier upgrade paths for every tower, and a persistent localStorage legacy
-- Map selection screen, arsenal screen, pause/speed controls, game-over flow and procedural audio
-
-All game code lives in `js/`, presentation in `css/`, and optional asset placeholders are in `assets/`.
+Spillet er lavet til både computer og touchskærm. Din bedste stjernescore og lydindstilling gemmes lokalt i browseren. Der kræves ingen konto, server, installation, billeder eller netværksforbindelse.

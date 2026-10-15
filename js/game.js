@@ -1,16 +1,528 @@
-(()=>{const root=document.querySelector('#screen'),save=BastionSave.get();let selectedMap='verdant',game=null;
-function home(){UI.screen(root,`<section class="hero"><div class="eyebrow">THE LAST LIGHT OF A DYING AGE</div><h1>ETERNAL<br>BASTION</h1><p>Build. Adapt. Endure.</p><div class="menu-actions"><button class="btn primary" id="play">ENTER THE BASTION</button><button class="btn" id="meta">ARSENAL &amp; LEGACY</button><button class="btn" id="records">RECORDS</button></div><div class="stats"><div><b>${save.best||'—'}</b>BEST WAVE</div><div><b>${save.shards}</b>ETERNAL SHARDS</div><div><b>${save.games}</b>RUNS</div><div><b>${save.kills||0}</b>FALLEN</div></div></section><section class="cards"><div class="card"><h3>12 TOWERS · 180 BUILDS</h3><p>Every tower has three specialisation paths and five tiers to master.</p></div><div class="card"><h3>20 THREATS · 10 BOSSES</h3><p>Read the field, counter unusual enemies, and survive handcrafted campaign waves.</p></div><div class="card"><h3>100 WAVES + ENDLESS</h3><p>Push beyond the campaign and chase your personal record in an ever-changing battle.</p></div></section>`);document.querySelector('#play').onclick=maps;document.querySelector('#meta').onclick=legacy;document.querySelector('#records').onclick=records}
-function maps(){const keys=Object.keys(MAPS);UI.screen(root,`<div class="hero" style="margin:3vh auto"><div class="eyebrow">SELECT A THEATER · 5 MAPS</div><h2>WHERE WILL YOU MAKE YOUR STAND?</h2><div class="cards map-grid">${keys.map((k,i)=>{const m=MAPS[k],locked=i>0&&save.best<(i*20);return `<div class="card map-card ${selectedMap===k?'selected':''}" data-map="${k}"><div class="map-art" style="background:${m.color}"></div><h3>${m.name}</h3><p>${m.tag}</p><span class="map-meta">${locked?'LOCKED BY WAVE '+i*20:'AVAILABLE'}</span></div>`}).join('')}</div><div class="menu-actions"><button class="btn" id="back">BACK</button><button class="btn primary" id="launch">DEPLOY TO ${MAPS[selectedMap].name.toUpperCase()}</button></div></div>`);document.querySelectorAll('.map-card').forEach(x=>x.onclick=()=>{const i=keys.indexOf(x.dataset.map);if(i&&save.best<i*20)return UI.toast('Survive more campaign waves to unlock this theater.');selectedMap=x.dataset.map;maps()});document.querySelector('#back').onclick=home;document.querySelector('#launch').onclick=()=>start()}
-function legacy(){UI.screen(root,`<div class="hero" style="margin:2vh auto;max-width:900px"><div class="eyebrow">THE ETERNAL ARSENAL</div><h2>LEGACY UPGRADES</h2><p>Spend shards earned from fallen invasions. These blessings persist between runs.</p><div class="cards">${[['damage','RUNIC EDGE','All towers deal +4% damage'],['health','BASTION HEART','Core gains +12 maximum health'],['income','GOLDEN OATH','Earn +8% more gold']].map(x=>`<div class="card"><h3>${x[1]}</h3><p>${x[2]}</p><div class="upgrade"><span>Level ${save.upgrades[x[0]]||0}<small>Next cost ${70*((save.upgrades[x[0]]||0)+1)} shards</small></span><button class="btn gold buy" data-k="${x[0]}">UPGRADE</button></div></div>`).join('')}</div><div class="menu-actions"><button class="btn" id="back">BACK TO TITLE</button><button class="btn" id="wipe">RESET LEGACY</button></div></div>`);document.querySelectorAll('.buy').forEach(b=>b.onclick=()=>{if(Meta.buy(b.dataset.k)){BastionAudio.build();legacy();UI.toast('Legacy strengthened.')}else UI.toast('Not enough eternal shards.')});document.querySelector('#back').onclick=home;document.querySelector('#wipe').onclick=()=>{BastionSave.reset();location.reload()}}
-function records(){UI.screen(root,`<div class="hero" style="margin:4vh auto;max-width:800px"><div class="eyebrow">ARCHIVE OF STANDS</div><h2>ACHIEVEMENTS &amp; STATISTICS</h2><div class="cards"><div class="card"><h3>CAMPAIGN</h3><p>Best wave: <b>${save.best}</b><br>Runs completed: <b>${save.games}</b><br>Total enemies defeated: <b>${save.kills||0}</b></p></div><div class="card"><h3>ACHIEVEMENTS</h3><p>${save.best>=10?'🏅 First Decade · ':''}${save.best>=50?'🏆 Halfway Hero · ':''}${save.best>=100?'👑 Eternal Warden · ':''}${(save.kills||0)>=1000?'⚔️ Thousand Fallen':''||'Keep defending to earn medals.'}</p></div></div><div class="menu-actions"><button class="btn" id="back">BACK TO TITLE</button></div></div>`);document.querySelector('#back').onclick=home}
-function start(){game={map:selectedMap,wave:0,gold:260,core:100+(save.upgrades.health||0)*12,maxCore:100+(save.upgrades.health||0)*12,enemies:[],towers:[],spawn:[],spawnAt:0,running:false,paused:false,selectedType:'ember',selected:null,kills:0};game.core=game.maxCore;save.games++;BastionSave.save();battle();requestAnimationFrame(loop)}
-function battle(){UI.screen(root,`<div class="game-layout"><section class="game-card"><div class="hud"><div class="hud-item"><b id="wave">WAVE 0</b><span>FRONTIER</span></div><div class="hud-item"><b id="gold">◈ 260</b><span>GOLD</span></div><div class="hud-item health"><b id="core">♥ 100/100</b><span>CORE INTEGRITY</span></div><div class="hud-item"><b id="kills">☠ 0</b><span>FALLEN</span></div></div><div class="canvas-wrap"><canvas id="arena"></canvas></div><div class="game-controls"><button class="btn primary" id="waveBtn">LAUNCH WAVE</button><button class="btn" id="speed">SPEED ×1</button><button class="btn" id="quit">ABORT RUN</button></div></section><aside class="side"><div class="panel"><h3>BUILD TOWERS</h3><div class="tower-grid">${Object.entries(TOWERS).map(([k,t])=>`<button class="tower-btn ${k==='ember'?'active':''}" data-t="${k}" title="${t.desc}"><b>${t.icon}</b><small>${t.name}</small><em>◈${t.cost}</em></button>`).join('')}</div><p id="towerHint" style="color:var(--muted);font-size:11px">Select a tower, then click the arena to build.</p></div><div class="panel"><h3>SELECTED TOWER</h3><div id="selectedInfo" style="color:var(--muted)">No tower selected</div></div><div class="panel"><h3>TACTICAL READOUT</h3><div class="bar"><i id="progress" style="width:0%"></i></div><p id="status" style="color:var(--muted);font-size:11px">Prepare your defenses.</p></div></aside></div>`);game.engine=new Engine(document.querySelector('#arena'),game);document.querySelectorAll('.tower-btn').forEach(b=>b.onclick=()=>{game.selectedType=b.dataset.t;document.querySelectorAll('.tower-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')});document.querySelector('#arena').onclick=placeOrSelect;document.querySelector('#waveBtn').onclick=launch;document.querySelector('#speed').onclick=e=>{game.speed=game.speed===2?1:2;e.target.textContent='SPEED ×'+game.speed};document.querySelector('#quit').onclick=home;document.querySelector('#pauseBtn').onclick=()=>{game.paused=!game.paused;document.querySelector('#pauseBtn').textContent=game.paused?'▶':'Ⅱ'}}
-function placeOrSelect(ev){const r=ev.target.getBoundingClientRect(),x=(ev.clientX-r.left)*ev.target.width/r.width,y=(ev.clientY-r.top)*ev.target.height/r.height;const near=game.towers.find(t=>Math.hypot(t.x-x,t.y-y)<22);if(near){game.selected=near;info();return}const d=TOWERS[game.selectedType];if(game.gold<d.cost)return UI.toast('Need more gold.');if(game.towers.some(t=>Math.hypot(t.x-x,t.y-y)<34))return UI.toast('Too close to another tower.');game.towers.push({x,y,def:d,last:0,level:1,path:[0,0,0]});game.gold-=d.cost;BastionAudio.build();info()}
-function info(){const e=document.querySelector('#selectedInfo');if(!game.selected)return e.innerHTML='No tower selected';const t=game.selected;e.innerHTML=`<b style="color:${t.def.color}">${t.def.icon} ${t.def.name}</b><p>${t.def.desc}</p><small>Damage ${Math.round(t.def.damage*t.level)} · Range ${t.def.range} · Paths ${t.path.map(x=>x+1).join('/')}</small><div class="path-list">${t.def.paths.map((path,p)=>`<div class="upgrade"><span><b>${['Might','Control','Utility'][p]}</b><small>${path[t.path[p]].effect}</small></span><button class="btn ${t.path[p]>=4?'':'gold'} path-up" data-p="${p}" ${t.path[p]>=4?'disabled':''}>${t.path[p]>=4?'MAX':'T'+(t.path[p]+1)+' ◈'+path[t.path[p]].cost}</button></div>`).join('')}</div>`;document.querySelectorAll('.path-up').forEach(b=>b.onclick=()=>{const p=+b.dataset.p,c=t.def.paths[p][t.path[p]].cost;if(game.gold<c)return UI.toast('Need more gold.');if(t.path[p]>=4)return UI.toast('Path complete.');game.gold-=c;t.path[p]++;t.level++;BastionAudio.build();info()})}
-function launch(){if(game.running)return;game.wave++;game.spawn=Waves.list(game.wave);game.spawnAt=0;game.running=true;BastionAudio.wave();document.querySelector('#status').textContent=(game.wave<=100?'Campaign ':'Endless ')+'wave '+game.wave+' incoming.'}
-function loop(now){if(game&&!game.paused){const dt=Math.min(40,now-(game.last||now))* (game.speed||1);game.last=now;if(game.running){game.spawnAt+=dt;if(game.spawn.length&&game.spawnAt>Math.max(170,600-game.wave*10)){spawn(game.spawn.shift());game.spawnAt=0}if(!game.spawn.length&&!game.enemies.length){game.running=false;game.gold+=35+game.wave*3;UI.toast('Wave cleared · bonus gold awarded')}}update(dt);game.engine.draw();hud()}if(game)requestAnimationFrame(loop)}
-function spawn(type){const d=ENEMIES[type],mult=(1+game.wave*.12)*(game.map==='void'?1.25:1);game.enemies.push({def:d,max:d.hp*mult,hp:d.hp*mult,progress:0})}
-function update(dt){for(const e of game.enemies){e.progress+=e.def.speed*dt/100000;if(e.progress>=1){e.hp=0;game.core-=e.def.boss?25:7;BastionAudio.hit()}else{for(const t of game.towers){const d=t.def,dist=Math.hypot(t.x-e.x,t.y-e.y);if(dist<d.range&&Date.now()-t.last>d.rate){t.last=Date.now();let hit=d.damage*t.level*(1+(save.upgrades.damage||0)*.04);if(d.crit&&Math.random()<d.crit)hit*=2;e.hp-=hit;if(d.slow)e.progress-=d.slow*.0007;if(d.splash)game.enemies.filter(q=>Math.hypot((q.x||0)-(e.x||0),(q.y||0)-(e.y||0))<d.splash).forEach(q=>q.hp-=hit*.3);BastionAudio.tone(180+Math.random()*180,.035)}}}}const dead=game.enemies.filter(e=>e.hp<=0);dead.forEach(e=>{game.gold+=e.def.reward;game.kills++;if(e.def.boss)game.gold+=80});game.enemies=game.enemies.filter(e=>e.hp>0);if(game.core<=0)end()}
-function hud(){document.querySelector('#wave').textContent='WAVE '+game.wave;document.querySelector('#gold').textContent='◈ '+game.gold;document.querySelector('#core').textContent='♥ '+Math.max(0,Math.ceil(game.core))+'/'+game.maxCore;document.querySelector('#kills').textContent='☠ '+game.kills;document.querySelector('#progress').style.width=(game.running?((game.spawn.length?1-game.spawn.length/Waves.list(game.wave).length:1)*100):0)+'%';document.querySelector('#status').textContent=game.running?'Enemies detected — hold the line.':'Awaiting deployment.'}
-function end(){if(game.ended)return;game.ended=true;save.best=Math.max(save.best,game.wave);save.kills=(save.kills||0)+game.kills;save.shards+=Math.floor(game.kills/3)+game.wave*4;BastionSave.save();setTimeout(()=>{UI.modal('THE BASTION HAS FALLEN',`You reached wave ${game.wave}. The frontier remembers your stand.`,`<button class="btn primary" id="again">TRY AGAIN</button><button class="btn" id="title">TITLE</button>`);document.querySelector('#again').onclick=start;document.querySelector('#title').onclick=home},100)}
-document.querySelector('#soundBtn').onclick=()=>{const on=BastionAudio.toggle();document.querySelector('#soundBtn').textContent=on?'♫':'⊘'};document.querySelector('#pauseBtn').onclick=()=>{};home()})();
+(() => {
+  "use strict";
+
+  const canvas = document.querySelector("#game-canvas");
+  const ctx = canvas.getContext("2d");
+  const ui = {
+    score: document.querySelector("#score"),
+    distance: document.querySelector("#distance"),
+    lives: document.querySelector("#lives"),
+    screen: document.querySelector("#screen-card"),
+    emoji: document.querySelector("#screen-emoji"),
+    eyebrow: document.querySelector("#screen-eyebrow"),
+    title: document.querySelector("#screen-title"),
+    copy: document.querySelector("#screen-copy"),
+    record: document.querySelector("#record"),
+    play: document.querySelector("#play-button"),
+    pause: document.querySelector("#pause-button"),
+    pauseCard: document.querySelector("#pause-card"),
+    resume: document.querySelector("#resume-button"),
+    home: document.querySelector("#home-button"),
+    jump: document.querySelector("#jump-button"),
+    hint: document.querySelector("#game-hint"),
+    sound: document.querySelector("#sound-button"),
+  };
+
+  const SAVE_KEY = "drageflugt-save-v1";
+  const WIDTH = canvas.width;
+  const HEIGHT = canvas.height;
+  const GROUND = 420;
+  const RUN_LENGTH = 3000;
+  const SPEED = 190;
+  const formatNumber = new Intl.NumberFormat("da-DK");
+  const obstaclesAt = [440, 760, 1085, 1410, 1730, 2050, 2380, 2695];
+
+  function loadSave() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
+      return {
+        best: Number.isFinite(saved.best) && saved.best > 0 ? Math.floor(saved.best) : 0,
+        runs: Number.isFinite(saved.runs) && saved.runs > 0 ? Math.floor(saved.runs) : 0,
+        sound: saved.sound !== false,
+      };
+    } catch {
+      return { best: 0, runs: 0, sound: true };
+    }
+  }
+
+  const save = loadSave();
+  let audioContext = null;
+  let state = "home";
+  let lastFrame = 0;
+  let elapsed = 0;
+  let soundOn = save.sound;
+  let score = 0;
+  let distance = 0;
+  let hearts = 3;
+  let jumpHeight = 0;
+  let jumpVelocity = 0;
+  let invulnerable = 0;
+  let obstacles = [];
+  let stars = [];
+  let clouds = [];
+
+  function persist() {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+    } catch {
+      // The game remains playable when browser storage is unavailable.
+    }
+  }
+
+  function tone(frequency, duration = 0.12, type = "sine") {
+    if (!soundOn) return;
+    try {
+      audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === "suspended") audioContext.resume();
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+      gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+      oscillator.connect(gain).connect(audioContext.destination);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + duration);
+    } catch {
+      // Audio is an optional extra; unsupported browsers play silently.
+    }
+  }
+
+  function updateHud() {
+    ui.score.textContent = formatNumber.format(score);
+    ui.distance.textContent = `${formatNumber.format(Math.max(0, Math.ceil(RUN_LENGTH - distance)))} m`;
+    ui.lives.textContent = "❤️".repeat(hearts) + "🤍".repeat(3 - hearts);
+    ui.lives.setAttribute("aria-label", `${hearts} af 3 hjerter`);
+  }
+
+  function showHome() {
+    state = "home";
+    score = 0;
+    distance = 0;
+    hearts = 3;
+    ui.screen.hidden = false;
+    ui.pauseCard.hidden = true;
+    ui.pause.hidden = true;
+    ui.jump.hidden = true;
+    ui.hint.hidden = true;
+    ui.emoji.textContent = "🏰";
+    ui.eyebrow.textContent = "ET SJOVT LØBEEVENTYR";
+    ui.title.textContent = "Hjælp Liva til slottet!";
+    ui.copy.textContent = "De søde drager vil gerne lege fangeleg. Hop over sten, snup stjerner, og løb hele vejen til det trygge slot!";
+    ui.play.textContent = "LAD OS LØBE! 🏃";
+    ui.record.textContent = `Din bedste tur: ${formatNumber.format(save.best)} stjerner`;
+    updateHud();
+  }
+
+  function beginRun() {
+    state = "playing";
+    score = 0;
+    distance = 0;
+    hearts = 3;
+    jumpHeight = 0;
+    jumpVelocity = 0;
+    invulnerable = 0;
+    elapsed = 0;
+    obstacles = obstaclesAt.map((at, index) => ({
+      at,
+      hit: false,
+      kind: index % 3 === 1 ? "log" : "rock",
+    }));
+    stars = [];
+    for (let at = 240; at < RUN_LENGTH - 100; at += 115) {
+      stars.push({ at, y: GROUND - 95 - (Math.floor(at / 115) % 3) * 15, collected: false });
+    }
+    clouds = Array.from({ length: 8 }, (_, i) => ({
+      x: i * 155 + Math.random() * 70,
+      y: 45 + Math.random() * 140,
+      size: 25 + Math.random() * 25,
+    }));
+    save.runs += 1;
+    persist();
+    ui.screen.hidden = true;
+    ui.pauseCard.hidden = true;
+    ui.pause.hidden = false;
+    ui.jump.hidden = false;
+    ui.hint.hidden = false;
+    updateHud();
+    tone(523, 0.11);
+    window.setTimeout(() => { ui.hint.hidden = true; }, 3500);
+  }
+
+  function pauseRun() {
+    if (state !== "playing" && state !== "paused") return;
+    state = state === "playing" ? "paused" : "playing";
+    ui.pauseCard.hidden = state !== "paused";
+    ui.pause.textContent = state === "paused" ? "▶" : "Ⅱ";
+    ui.pause.setAttribute("aria-label", state === "paused" ? "Fortsæt spillet" : "Sæt spillet på pause");
+  }
+
+  function jump() {
+    if (state !== "playing" || jumpHeight > 0) return;
+    jumpVelocity = 680;
+    tone(660, 0.08);
+  }
+
+  function finish(won) {
+    state = "result";
+    save.best = Math.max(save.best, score);
+    persist();
+    ui.pause.hidden = true;
+    ui.jump.hidden = true;
+    ui.hint.hidden = true;
+    ui.screen.hidden = false;
+    ui.emoji.textContent = won ? "🎉" : "💛";
+    ui.eyebrow.textContent = won ? "DU KLAREDE DET!" : "SIKKE EN MODIG TUR!";
+    ui.title.textContent = won ? "Liva er nået til slottet!" : "Dragerne fik næsten fat!";
+    ui.copy.textContent = won
+      ? `Du samlede ${formatNumber.format(score)} stjerner på vejen. Liva, dragen Pjuske og alle vennerne fejrer dig!`
+      : `Du samlede ${formatNumber.format(score)} stjerner og løb ${formatNumber.format(Math.floor(distance))} meter. Prøv igen – du kan godt!`;
+    ui.play.textContent = "PRØV IGEN! ✨";
+    ui.record.textContent = `Din bedste tur: ${formatNumber.format(save.best)} stjerner`;
+    if (won) tone(784, 0.16);
+  }
+
+  function update(delta) {
+    if (state !== "playing") return;
+    elapsed += delta;
+    distance = Math.min(RUN_LENGTH, distance + SPEED * delta);
+    jumpHeight = Math.max(0, jumpHeight + jumpVelocity * delta);
+    if (jumpHeight === 0) jumpVelocity = 0;
+    else jumpVelocity -= 1750 * delta;
+    invulnerable = Math.max(0, invulnerable - delta);
+    clouds.forEach((cloud) => {
+      cloud.x -= 9 * delta;
+      if (cloud.x < -80) cloud.x = WIDTH + 60;
+    });
+
+    for (const star of stars) {
+      const heroTop = GROUND - jumpHeight - 57;
+      const heroBottom = GROUND - jumpHeight;
+      const starTop = star.y - 15;
+      const starBottom = star.y + 15;
+      if (
+        !star.collected
+        && Math.abs(star.at - distance) < 32
+        && starBottom >= heroTop
+        && starTop <= heroBottom
+      ) {
+        star.collected = true;
+        score += 1;
+        tone(880, 0.08);
+      }
+    }
+
+    for (const obstacle of obstacles) {
+      if (obstacle.hit || Math.abs(obstacle.at - distance) > 39) continue;
+      obstacle.hit = true;
+      if (jumpHeight < 52 && invulnerable === 0) {
+        hearts -= 1;
+        invulnerable = 1.2;
+        tone(220, 0.18, "triangle");
+        if (hearts === 0) {
+          updateHud();
+          finish(false);
+          return;
+        }
+      }
+    }
+
+    if (distance >= RUN_LENGTH) {
+      updateHud();
+      finish(true);
+      return;
+    }
+    updateHud();
+  }
+
+  function roundedRect(x, y, width, height, radius, fill) {
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, radius);
+    ctx.fill();
+  }
+
+  function drawCloud(x, y, size) {
+    ctx.fillStyle = "#ffffffd9";
+    ctx.beginPath();
+    ctx.arc(x, y, size * 0.55, Math.PI, 0);
+    ctx.arc(x + size * 0.55, y - size * 0.24, size * 0.7, Math.PI, 0);
+    ctx.arc(x + size * 1.15, y, size * 0.5, Math.PI, 0);
+    ctx.lineTo(x + size * 1.65, y + size * 0.35);
+    ctx.lineTo(x, y + size * 0.35);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawDragon(x, y, scale = 1) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = "#f18b77";
+    ctx.beginPath();
+    ctx.moveTo(-48, 9);
+    ctx.quadraticCurveTo(-82, -8, -75, -28);
+    ctx.quadraticCurveTo(-51, -21, -35, -5);
+    ctx.fill();
+    ctx.fillStyle = "#99d879";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 43, 31, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffe98d";
+    ctx.beginPath();
+    ctx.ellipse(17, 14, 23, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#7ec95f";
+    ctx.beginPath();
+    ctx.moveTo(-19, -21);
+    ctx.lineTo(-30, -52);
+    ctx.lineTo(-5, -31);
+    ctx.moveTo(8, -26);
+    ctx.lineTo(17, -55);
+    ctx.lineTo(28, -25);
+    ctx.fill();
+    ctx.fillStyle = "#99d879";
+    ctx.beginPath();
+    ctx.arc(24, -10, 24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.ellipse(31, -17, 8, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#294d59";
+    ctx.beginPath();
+    ctx.arc(34, -16, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ef9289";
+    ctx.beginPath();
+    ctx.arc(43, -3, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#426750";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(40, 2, 7, 0.1, 1.4);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawHero(x, ground, height) {
+    const bob = state === "playing" && height === 0 ? Math.sin(elapsed * 15) * 2 : 0;
+    const y = ground - height + bob;
+    ctx.save();
+    ctx.translate(x, y);
+    if (invulnerable > 0 && Math.floor(elapsed * 12) % 2 === 0) ctx.globalAlpha = 0.42;
+    ctx.strokeStyle = "#536879";
+    ctx.lineWidth = 7;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-6, -13);
+    ctx.lineTo(-12, -1);
+    ctx.moveTo(8, -13);
+    ctx.lineTo(13, -2);
+    ctx.stroke();
+    ctx.fillStyle = "#f6bd91";
+    ctx.beginPath();
+    ctx.arc(0, -39, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#674e42";
+    ctx.beginPath();
+    ctx.arc(-2, -47, 17, Math.PI, Math.PI * 2);
+    ctx.lineTo(15, -38);
+    ctx.quadraticCurveTo(3, -44, -15, -35);
+    ctx.fill();
+    ctx.fillStyle = "#365f93";
+    ctx.beginPath();
+    ctx.roundRect(-16, -23, 32, 30, 10);
+    ctx.fill();
+    ctx.fillStyle = "#f6bd91";
+    ctx.beginPath();
+    ctx.arc(5, -40, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fb7185";
+    ctx.beginPath();
+    ctx.roundRect(-21, -20, 8, 20, 4);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawCastle(x, ground) {
+    ctx.fillStyle = "#f8d992";
+    ctx.fillRect(x, ground - 122, 142, 122);
+    ctx.fillStyle = "#eabf72";
+    ctx.fillRect(x + 12, ground - 148, 36, 150);
+    ctx.fillRect(x + 94, ground - 148, 36, 150);
+    ctx.fillStyle = "#bd7584";
+    ctx.beginPath();
+    ctx.moveTo(x + 7, ground - 148);
+    ctx.lineTo(x + 30, ground - 183);
+    ctx.lineTo(x + 53, ground - 148);
+    ctx.moveTo(x + 89, ground - 148);
+    ctx.lineTo(x + 112, ground - 183);
+    ctx.lineTo(x + 135, ground - 148);
+    ctx.fill();
+    ctx.fillStyle = "#86cbd5";
+    for (const windowX of [24, 105]) {
+      ctx.beginPath();
+      ctx.roundRect(x + windowX, ground - 127, 13, 20, 7);
+      ctx.fill();
+    }
+    ctx.fillStyle = "#965c5c";
+    ctx.beginPath();
+    ctx.roundRect(x + 57, ground - 58, 29, 58, [15, 15, 0, 0]);
+    ctx.fill();
+    ctx.fillStyle = "#e6b94f";
+    ctx.beginPath();
+    ctx.arc(x + 79, ground - 29, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawScene() {
+    const sky = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+    sky.addColorStop(0, "#91ddf5");
+    sky.addColorStop(0.67, "#d3f4e8");
+    sky.addColorStop(1, "#9bd786");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    ctx.fillStyle = "#ffe18a";
+    ctx.beginPath();
+    ctx.arc(790, 94, 43, 0, Math.PI * 2);
+    ctx.fill();
+    clouds.forEach((cloud) => drawCloud(cloud.x, cloud.y, cloud.size));
+
+    ctx.fillStyle = "#9fdba8";
+    ctx.beginPath();
+    ctx.moveTo(0, 302);
+    ctx.quadraticCurveTo(205, 202, 410, 304);
+    ctx.quadraticCurveTo(670, 208, 960, 301);
+    ctx.lineTo(960, GROUND);
+    ctx.lineTo(0, GROUND);
+    ctx.fill();
+    ctx.fillStyle = "#78cb91";
+    ctx.beginPath();
+    ctx.moveTo(0, 351);
+    ctx.quadraticCurveTo(220, 270, 444, 352);
+    ctx.quadraticCurveTo(730, 268, 960, 353);
+    ctx.lineTo(960, GROUND);
+    ctx.lineTo(0, GROUND);
+    ctx.fill();
+
+    const castleX = state === "home" ? 760 : 245 + Math.max(0, RUN_LENGTH - distance) * 0.7;
+    if (state === "home" || distance > RUN_LENGTH - 700) drawCastle(castleX, GROUND);
+    ctx.fillStyle = "#79c96f";
+    ctx.fillRect(0, GROUND, WIDTH, HEIGHT - GROUND);
+    ctx.fillStyle = "#d4a96c";
+    ctx.fillRect(0, GROUND + 25, WIDTH, HEIGHT - GROUND - 25);
+    ctx.fillStyle = "#82ce77";
+    ctx.fillRect(0, GROUND, WIDTH, 13);
+
+    for (let i = 0; i < 13; i += 1) {
+      const x = (i * 103 - distance * 0.65 % 103 + 103) % WIDTH;
+      ctx.fillStyle = i % 2 ? "#fff4b0" : "#fff";
+      ctx.beginPath();
+      ctx.ellipse(x, GROUND + 55 + (i % 2) * 16, 6, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    for (const obstacle of obstacles) {
+      const x = 245 + (obstacle.at - distance) * 1.04;
+      if (x < -70 || x > WIDTH + 70 || obstacle.hit) continue;
+      if (obstacle.kind === "log") {
+        roundedRect(x - 28, GROUND - 22, 56, 24, 11, "#9b684b");
+        ctx.fillStyle = "#c28a5f";
+        ctx.beginPath();
+        ctx.ellipse(x + 19, GROUND - 10, 7, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = "#87979b";
+        ctx.beginPath();
+        ctx.moveTo(x - 22, GROUND);
+        ctx.quadraticCurveTo(x - 20, GROUND - 34, x, GROUND - 37);
+        ctx.quadraticCurveTo(x + 23, GROUND - 31, x + 23, GROUND);
+        ctx.fill();
+        ctx.fillStyle = "#aab8b7";
+        ctx.beginPath();
+        ctx.arc(x - 6, GROUND - 22, 5, Math.PI, 0);
+        ctx.fill();
+      }
+    }
+
+    for (const star of stars) {
+      if (star.collected) continue;
+      const x = 245 + (star.at - distance) * 1.04;
+      if (x < -30 || x > WIDTH + 30) continue;
+      const shimmer = Math.sin(elapsed * 5 + star.at) * 3;
+      ctx.save();
+      ctx.translate(x, star.y + shimmer);
+      ctx.fillStyle = "#ffca4e";
+      ctx.strokeStyle = "#fff2a8";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let point = 0; point < 10; point += 1) {
+        const radius = point % 2 ? 7 : 15;
+        const angle = point * Math.PI / 5 - Math.PI / 2;
+        if (point === 0) ctx.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+        else ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const dragonX = state === "home" ? 715 : Math.max(275, 55 + (distance / RUN_LENGTH) * 150 + (hearts < 3 ? 18 : 0));
+    drawDragon(dragonX, GROUND - 45 + Math.sin(elapsed * 4) * 5, 1.03);
+    drawHero(245, GROUND, jumpHeight);
+
+    if (state === "home") {
+      ctx.fillStyle = "#fff";
+      ctx.font = "800 18px Nunito, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Liva, Pjuske og en hel bunke stjerner!", WIDTH / 2, 493);
+    }
+  }
+
+  function frame(now) {
+    const delta = Math.min((now - (lastFrame || now)) / 1000, 0.04);
+    lastFrame = now;
+    update(delta);
+    drawScene();
+    requestAnimationFrame(frame);
+  }
+
+  ui.play.addEventListener("click", beginRun);
+  ui.jump.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    jump();
+  });
+  ui.pause.addEventListener("click", pauseRun);
+  ui.resume.addEventListener("click", pauseRun);
+  ui.home.addEventListener("click", showHome);
+  ui.sound.addEventListener("click", () => {
+    soundOn = !soundOn;
+    save.sound = soundOn;
+    persist();
+    ui.sound.textContent = soundOn ? "🔊" : "🔇";
+    ui.sound.setAttribute("aria-label", soundOn ? "Slå lyd fra" : "Slå lyd til");
+    if (soundOn) tone(600, 0.08);
+  });
+  window.addEventListener("keydown", (event) => {
+    if (event.code === "Space" || event.code === "ArrowUp" || event.code === "KeyW") {
+      event.preventDefault();
+      if (state === "paused") pauseRun();
+      else jump();
+    } else if (event.code === "Escape" || event.code === "KeyP") {
+      pauseRun();
+    }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && state === "playing") pauseRun();
+  });
+  window.addEventListener("blur", () => {
+    if (state === "playing") pauseRun();
+  });
+
+  ui.sound.textContent = soundOn ? "🔊" : "🔇";
+  ui.sound.setAttribute("aria-label", soundOn ? "Slå lyd fra" : "Slå lyd til");
+  showHome();
+  requestAnimationFrame(frame);
+})();

@@ -1,23 +1,60 @@
 <!doctype html>
-<html lang="en">
+<html lang="da">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-  <meta name="theme-color" content="#08101f">
-  <title>Eternal Bastion — Tower Defense</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#bdeef7">
+  <meta name="description" content="Hjælp Liva med at løbe fra de fjollede drager og samle stjerner på vejen til slottet!">
+  <title>Drageflugt – Løb til slottet!</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <div id="app" class="app">
+  <main class="game-shell">
     <header class="topbar">
-      <div class="brand"><span class="sigil">✦</span><div><b>ETERNAL BASTION</b><small>WARDEN PROTOCOL</small></div></div>
-      <div class="top-actions"><button class="icon-btn" id="soundBtn" title="Toggle sound">♫</button><button class="icon-btn" id="pauseBtn" title="Pause">Ⅱ</button></div>
+      <a class="brand" href="./" aria-label="Drageflugt – forsiden">
+        <span class="brand-icon" aria-hidden="true">🐉</span>
+        <span>DRAGEFLUGT<small>LØB TIL SLOTTET!</small></span>
+      </a>
+      <div class="top-actions">
+        <button class="icon-button" id="sound-button" type="button" aria-label="Slå lyd fra" title="Lyd">🔊</button>
+        <button class="icon-button" id="pause-button" type="button" aria-label="Sæt spillet på pause" title="Pause" hidden>Ⅱ</button>
+      </div>
     </header>
-    <main id="screen" class="screen"></main>
-  </div>
-  <div id="toast" class="toast"></div>
-  <script src="js/save.js"></script><script src="js/audio.js"></script><script src="js/towers.js"></script>
-  <script src="js/enemies.js"></script><script src="js/maps.js"></script><script src="js/waves.js"></script><script src="js/upgrades.js"></script>
-  <script src="js/engine.js"></script><script src="js/ui.js"></script><script src="js/game.js"></script>
+
+    <section class="game-card" aria-label="Spillet Drageflugt">
+      <div class="scorebar">
+        <div class="score-item"><span class="score-label">STJERNER</span><strong id="score">0</strong></div>
+        <div class="score-item distance-item"><span class="score-label">TIL SLOTTET</span><strong id="distance">3.000 m</strong></div>
+        <div class="score-item lives-item"><span class="score-label">HJERTER</span><strong id="lives" aria-label="Tre hjerter">❤️❤️❤️</strong></div>
+      </div>
+
+      <div class="stage">
+        <canvas id="game-canvas" width="960" height="540" aria-label="Spillebane med Liva, drager, stjerner og et slot">
+          Dit spil understøtter ikke canvas. Prøv en nyere browser.
+        </canvas>
+        <section class="screen-card" id="screen-card" aria-live="polite">
+          <div class="screen-emoji" id="screen-emoji" aria-hidden="true">🏰</div>
+          <p class="eyebrow" id="screen-eyebrow">ET SJOVT LØBEEVENTYR</p>
+          <h1 id="screen-title">Hjælp Liva til slottet!</h1>
+          <p class="screen-copy" id="screen-copy">De søde drager vil gerne lege fangeleg. Hop over sten, snup stjerner, og løb hele vejen til det trygge slot!</p>
+          <div class="instruction"><span aria-hidden="true">⬆️</span><span>Tryk <b>MELLEMRUM</b>, <b>↑</b> eller på hop-knappen for at hoppe.</span></div>
+          <button class="play-button" id="play-button" type="button">LAD OS LØBE! <span aria-hidden="true">🏃</span></button>
+          <p class="record" id="record">Din bedste tur: 0 stjerner</p>
+        </section>
+        <div class="pause-card" id="pause-card" hidden>
+          <span aria-hidden="true">⏸️</span><strong>PAUSE</strong>
+          <button class="play-button" id="resume-button" type="button">FORTSÆT ▶</button>
+          <button class="text-button" id="home-button" type="button">Tilbage til forsiden</button>
+        </div>
+        <div class="game-hint" id="game-hint" hidden>Hop med ↑, mellemrum eller knappen!</div>
+      </div>
+      <footer class="game-footer">
+        <div class="tip"><span aria-hidden="true">💡</span><span>Et godt hop hjælper dig over forhindringerne!</span></div>
+        <button class="jump-button" id="jump-button" type="button" aria-label="Hop">HOP! <span aria-hidden="true">⬆️</span></button>
+      </footer>
+    </section>
+    <p class="footer-note">Et hyggeligt eventyr for små eventyrere <span aria-hidden="true">✨</span></p>
+  </main>
+  <script src="js/game.js"></script>
 </body>
 </html>
