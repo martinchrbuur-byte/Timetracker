@@ -19,7 +19,6 @@
     resume: document.querySelector("#resume-button"),
     home: document.querySelector("#home-button"),
     jump: document.querySelector("#jump-button"),
-    hint: document.querySelector("#game-hint"),
     sound: document.querySelector("#sound-button"),
     fullscreen: document.querySelector("#fullscreen-button"),
     fullscreenHint: document.querySelector("#fullscreen-hint"),
@@ -106,7 +105,6 @@
     ui.pauseCard.hidden = true;
     ui.pause.hidden = true;
     ui.jump.hidden = true;
-    ui.hint.hidden = true;
     ui.emoji.textContent = "🏰";
     ui.eyebrow.textContent = "ET SJOVT LØBEEVENTYR";
     ui.title.textContent = "Hjælp Liva til slottet!";
@@ -145,10 +143,8 @@
     ui.pauseCard.hidden = true;
     ui.pause.hidden = false;
     ui.jump.hidden = false;
-    ui.hint.hidden = false;
     updateHud();
     tone(523, 0.11);
-    window.setTimeout(() => { ui.hint.hidden = true; }, 3500);
   }
 
   function pauseRun() {
@@ -200,7 +196,6 @@
     persist();
     ui.pause.hidden = true;
     ui.jump.hidden = true;
-    ui.hint.hidden = true;
     ui.screen.hidden = false;
     ui.emoji.textContent = won ? "🎉" : "💛";
     ui.eyebrow.textContent = won ? "DU KLAREDE DET!" : "SIKKE EN MODIG TUR!";
@@ -341,7 +336,6 @@
     const y = ground - height + bob;
     ctx.save();
     ctx.translate(x, y);
-    if (invulnerable > 0 && Math.floor(elapsed * 12) % 2 === 0) ctx.globalAlpha = 0.42;
     ctx.strokeStyle = "#536879";
     ctx.lineWidth = 7;
     ctx.lineCap = "round";
