@@ -9,6 +9,7 @@ Et lille, hyggeligt løbeeventyr på dansk. Hjælp Liva med at slippe væk fra d
 - Saml de gyldne stjerner for point. Hvis Liva rammer en forhindring, mister hun et hjerte. Hun har tre hjerter.
 - Nå slottet for at vinde. Du kan altid prøve igen.
 - Brug pauseknappen eller **Esc**/**P** for at holde pause. Lyden kan slås til og fra.
-- På iPhone: åbn siden i Safari, vælg **Del → Føj til hjemmeskærm**, og start spillet fra det nye ikon for at bruge hele skærmen. Andre browsere kan bruge fuldskærmsknappen.
+- Spillet går automatisk i fuld skærm, når du starter en tur, hvis browseren understøtter det. Fuldskærmsknappen kan også bruges til at slå det til eller fra.
+- På iPhone: åbn siden i Safari, vælg **Del → Føj til hjemmeskærm**, og start spillet fra det nye ikon for at bruge hele skærmen.
 
 Spillet er lavet til både computer og touchskærm. Din bedste stjernescore og lydindstilling gemmes lokalt i browseren. Der kræves ingen konto, server, installation, billeder eller netværksforbindelse.
