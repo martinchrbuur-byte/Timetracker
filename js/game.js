@@ -19,6 +19,7 @@
     resume: document.querySelector("#resume-button"),
     home: document.querySelector("#home-button"),
     jump: document.querySelector("#jump-button"),
+    tip: document.querySelector("#game-tip"),
     sound: document.querySelector("#sound-button"),
     fullscreen: document.querySelector("#fullscreen-button"),
     fullscreenHint: document.querySelector("#fullscreen-hint"),
@@ -28,10 +29,14 @@
   const WIDTH = canvas.width;
   const HEIGHT = canvas.height;
   const GROUND = 420;
-  const RUN_LENGTH = 3000;
+  const MILESTONE_LENGTH = 1000;
   const SPEED = 190;
   const formatNumber = new Intl.NumberFormat("da-DK");
-  const obstaclesAt = [440, 760, 1085, 1410, 1730, 2050, 2380, 2695];
+  const challenges = [
+    { kind: "stars", goal: 10, label: "Saml 10 stjerner" },
+    { kind: "distance", goal: 1500, label: "Løb 1.500 meter" },
+    { kind: "powerups", goal: 2, label: "Find 2 magiske hjælpere" },
+  ];
 
   function loadSave() {
     try {
@@ -39,10 +44,16 @@
       return {
         best: Number.isFinite(saved.best) && saved.best > 0 ? Math.floor(saved.best) : 0,
         runs: Number.isFinite(saved.runs) && saved.runs > 0 ? Math.floor(saved.runs) : 0,
+        bestDistance: Number.isFinite(saved.bestDistance) && saved.bestDistance > 0
+          ? Math.floor(saved.bestDistance)
+          : 0,
+        challengeWins: Number.isFinite(saved.challengeWins) && saved.challengeWins > 0
+          ? Math.floor(saved.challengeWins)
+          : 0,
         sound: saved.sound !== false,
       };
     } catch {
-      return { best: 0, runs: 0, sound: true };
+      return { best: 0, runs: 0, bestDistance: 0, challengeWins: 0, sound: true };
     }
   }
 
@@ -58,8 +69,23 @@
   let jumpHeight = 0;
   let jumpVelocity = 0;
   let invulnerable = 0;
+  let magnetTime = 0;
+  let shieldTime = 0;
+  let springTime = 0;
+  let challenge = null;
+  let challengeComplete = false;
+  let powerupsFound = 0;
+  let nextObstacleAt = 440;
+  let obstaclePattern = 0;
+  let nextStarAt = 240;
+  let nextPowerupAt = 900;
+  let powerupIndex = 0;
+  let nextMilestone = MILESTONE_LENGTH;
+  let dragonMessage = "";
+  let dragonMessageTime = 0;
   let obstacles = [];
   let stars = [];
+  let powerups = [];
   let clouds = [];
 
   function persist() {
@@ -91,16 +117,108 @@
 
   function updateHud() {
     ui.score.textContent = formatNumber.format(score);
-    ui.distance.textContent = `${formatNumber.format(Math.max(0, Math.ceil(RUN_LENGTH - distance)))} m`;
+    const remaining = MILESTONE_LENGTH - (Math.floor(distance) % MILESTONE_LENGTH);
+    ui.distance.textContent = `${formatNumber.format(remaining)} m`;
     ui.lives.textContent = "❤️".repeat(hearts) + "🤍".repeat(3 - hearts);
     ui.lives.setAttribute("aria-label", `${hearts} af 3 hjerter`);
+    if (state === "playing" && magnetTime > 0) {
+      ui.tip.textContent = `🧲 Stjernemagnet: ${Math.ceil(magnetTime)} sekunder`;
+    } else if (state === "playing" && shieldTime > 0) {
+      ui.tip.textContent = `🫧 Tryg boble: ${Math.ceil(shieldTime)} sekunder`;
+    } else if (state === "playing" && springTime > 0) {
+      ui.tip.textContent = `🪽 Superhop: ${Math.ceil(springTime)} sekunder`;
+    } else if (state === "playing" && challenge) {
+      ui.tip.textContent = challengeComplete ? "✨ Opgave klaret! Pjuske er stolt!" : `⭐ Opgave: ${challenge.label}`;
+    } else {
+      ui.tip.textContent = "Et godt hop hjælper dig over forhindringerne!";
+    }
+  }
+
+  function tellDragon(message) {
+    dragonMessage = message;
+    dragonMessageTime = 2.6;
+  }
+
+  function getDifficulty(at = distance) {
+    return Math.min(18, Math.floor(at / 1500));
+  }
+
+  function isForkStretch(at) {
+    const position = at % 1800;
+    return position >= 600 && position < 1120;
+  }
+
+  function ensureWorldContent() {
+    while (nextObstacleAt < distance + 1500) {
+      const difficulty = getDifficulty(nextObstacleAt);
+      const paired = obstaclePattern % 2 === 1;
+      const kind = obstaclePattern % 3 === 1 ? "log" : "rock";
+      if (!isForkStretch(nextObstacleAt)) obstacles.push({ at: nextObstacleAt, hit: false, kind });
+      if (paired && !isForkStretch(nextObstacleAt + 235)) {
+        obstacles.push({
+          at: nextObstacleAt + 235,
+          hit: false,
+          kind: kind === "log" ? "rock" : "log",
+        });
+      }
+      const groupGap = paired ? 455 : 365 - difficulty * 2;
+      nextObstacleAt += groupGap;
+      obstaclePattern += 1;
+    }
+
+    while (nextStarAt < distance + 1500) {
+      if (isForkStretch(nextStarAt)) {
+        stars.push({ at: nextStarAt, y: GROUND - 38, value: 1, collected: false });
+        stars.push({ at: nextStarAt, y: GROUND - 132, value: 2, collected: false });
+      } else {
+        stars.push({
+          at: nextStarAt,
+          y: GROUND - 95 - (Math.floor(nextStarAt / 115) % 3) * 15,
+          value: 1,
+          collected: false,
+        });
+      }
+      nextStarAt += 115;
+    }
+
+    while (nextPowerupAt < distance + 1500) {
+      const kinds = ["magnet", "shield", "spring"];
+      powerups.push({ at: nextPowerupAt, kind: kinds[powerupIndex % kinds.length], collected: false });
+      nextPowerupAt += 1050;
+      powerupIndex += 1;
+    }
+  }
+
+  function challengeProgress() {
+    if (!challenge) return 0;
+    if (challenge.kind === "stars") return score;
+    if (challenge.kind === "distance") return Math.floor(distance);
+    return powerupsFound;
+  }
+
+  function checkChallenge() {
+    if (!challenge || challengeComplete || challengeProgress() < challenge.goal) return;
+    challengeComplete = true;
+    save.challengeWins += 1;
+    persist();
+    tellDragon(save.challengeWins <= 3 ? "Jubii! Et nyt tørklæde!" : "Jubii! Du klarede din opgave!");
   }
 
   function showHome() {
+    if (state === "paused") {
+      save.best = Math.max(save.best, score);
+      save.bestDistance = Math.max(save.bestDistance, Math.floor(distance));
+      persist();
+    }
     state = "home";
     score = 0;
     distance = 0;
     hearts = 3;
+    jumpHeight = 0;
+    jumpVelocity = 0;
+    obstacles = [];
+    stars = [];
+    powerups = [];
     ui.screen.hidden = false;
     ui.pauseCard.hidden = true;
     ui.pause.hidden = true;
@@ -108,9 +226,10 @@
     ui.emoji.textContent = "🏰";
     ui.eyebrow.textContent = "ET SJOVT LØBEEVENTYR";
     ui.title.textContent = "Hjælp Liva til slottet!";
-    ui.copy.textContent = "De søde drager vil gerne lege fangeleg. Hop over sten, snup stjerner, og løb hele vejen til det trygge slot!";
+    ui.copy.textContent = "Løb så langt du kan! Hop over sten, vælg en stjernesti, og find magiske hjælpere. Slottet holder fest for dig for hver 1.000 meter!";
     ui.play.textContent = "LAD OS LØBE! 🏃";
-    ui.record.textContent = `Din bedste tur: ${formatNumber.format(save.best)} stjerner`;
+    ui.record.textContent = `Længste løb: ${formatNumber.format(save.bestDistance)} m · ${formatNumber.format(save.best)} stjerner`;
+    ui.record.textContent += ` · Tørklæder: ${Math.min(3, save.challengeWins)} af 3`;
     updateHud();
   }
 
@@ -122,16 +241,25 @@
     jumpHeight = 0;
     jumpVelocity = 0;
     invulnerable = 0;
+    magnetTime = 0;
+    shieldTime = 0;
+    springTime = 0;
+    powerupsFound = 0;
+    challengeComplete = false;
     elapsed = 0;
-    obstacles = obstaclesAt.map((at, index) => ({
-      at,
-      hit: false,
-      kind: index % 3 === 1 ? "log" : "rock",
-    }));
+    nextObstacleAt = 440;
+    obstaclePattern = 0;
+    nextStarAt = 240;
+    nextPowerupAt = 900;
+    powerupIndex = 0;
+    nextMilestone = MILESTONE_LENGTH;
+    dragonMessage = "";
+    dragonMessageTime = 0;
+    challenge = { ...challenges[save.runs % challenges.length] };
+    obstacles = [];
     stars = [];
-    for (let at = 240; at < RUN_LENGTH - 100; at += 115) {
-      stars.push({ at, y: GROUND - 95 - (Math.floor(at / 115) % 3) * 15, collected: false });
-    }
+    powerups = [];
+    ensureWorldContent();
     clouds = Array.from({ length: 8 }, (_, i) => ({
       x: i * 155 + Math.random() * 70,
       y: 45 + Math.random() * 140,
@@ -195,32 +323,42 @@
     document.documentElement.requestFullscreen().catch(() => {});
   }
 
-  function finish(won) {
+  function finish() {
     state = "result";
     save.best = Math.max(save.best, score);
+    save.bestDistance = Math.max(save.bestDistance, Math.floor(distance));
     persist();
     ui.pause.hidden = true;
     ui.jump.hidden = true;
     ui.screen.hidden = false;
-    ui.emoji.textContent = won ? "🎉" : "💛";
-    ui.eyebrow.textContent = won ? "DU KLAREDE DET!" : "SIKKE EN MODIG TUR!";
-    ui.title.textContent = won ? "Liva er nået til slottet!" : "Dragerne fik næsten fat!";
-    ui.copy.textContent = won
-      ? `Du samlede ${formatNumber.format(score)} stjerner på vejen. Liva, dragen Pjuske og alle vennerne fejrer dig!`
-      : `Du samlede ${formatNumber.format(score)} stjerner og løb ${formatNumber.format(Math.floor(distance))} meter. Prøv igen – du kan godt!`;
+    ui.emoji.textContent = "💛";
+    ui.eyebrow.textContent = "SIKKE EN MODIG TUR!";
+    ui.title.textContent = "Liva tager en lille pause!";
+    const challengeResult = challengeComplete
+      ? " Du klarede din lille opgave!"
+      : ` Din opgave var: ${challenge.label.toLowerCase()}.`;
+    ui.copy.textContent = `Du samlede ${formatNumber.format(score)} stjerner og løb ${formatNumber.format(Math.floor(distance))} meter.${challengeResult} Prøv igen – Pjuske hepper på dig!`;
     ui.play.textContent = "PRØV IGEN! ✨";
-    ui.record.textContent = `Din bedste tur: ${formatNumber.format(save.best)} stjerner`;
-    if (won) tone(784, 0.16);
+    ui.record.textContent = `Længste løb: ${formatNumber.format(save.bestDistance)} m · ${formatNumber.format(save.best)} stjerner`;
+    ui.record.textContent += ` · Tørklæder: ${Math.min(3, save.challengeWins)} af 3`;
+    tone(330, 0.16);
   }
 
   function update(delta) {
     if (state !== "playing") return;
     elapsed += delta;
-    distance = Math.min(RUN_LENGTH, distance + SPEED * delta);
-    jumpHeight = Math.max(0, jumpHeight + jumpVelocity * delta);
+    const difficulty = getDifficulty();
+    const speed = SPEED + difficulty * 3;
+    distance += speed * delta;
+    jumpHeight = Math.max(0, jumpHeight + jumpVelocity * (springTime > 0 ? 1.16 : 1) * delta);
     if (jumpHeight === 0) jumpVelocity = 0;
     else jumpVelocity -= 1750 * delta;
     invulnerable = Math.max(0, invulnerable - delta);
+    magnetTime = Math.max(0, magnetTime - delta);
+    shieldTime = Math.max(0, shieldTime - delta);
+    springTime = Math.max(0, springTime - delta);
+    dragonMessageTime = Math.max(0, dragonMessageTime - delta);
+    ensureWorldContent();
     clouds.forEach((cloud) => {
       cloud.x -= 9 * delta;
       if (cloud.x < -80) cloud.x = WIDTH + 60;
@@ -233,36 +371,63 @@
       const starBottom = star.y + 15;
       if (
         !star.collected
-        && Math.abs(star.at - distance) < 32
-        && starBottom >= heroTop
-        && starTop <= heroBottom
+        && Math.abs(star.at - distance) < (magnetTime > 0 ? 115 : 32)
+        && (magnetTime > 0 || (starBottom >= heroTop && starTop <= heroBottom))
       ) {
         star.collected = true;
-        score += 1;
+        score += star.value || 1;
+        if (score % 5 === 0) tellDragon("Flot samlet!");
         tone(880, 0.08);
       }
+    }
+
+    for (const powerup of powerups) {
+      if (powerup.collected || Math.abs(powerup.at - distance) > 40) continue;
+      powerup.collected = true;
+      powerupsFound += 1;
+      if (powerup.kind === "magnet") {
+        magnetTime = 7;
+        tellDragon("Stjernemagnet! Fedt!");
+      } else if (powerup.kind === "shield") {
+        shieldTime = 9;
+        tellDragon("En tryg boble beskytter dig!");
+      } else {
+        springTime = 8;
+        tellDragon("Superhop i otte sekunder!");
+      }
+      tone(740, 0.12);
     }
 
     for (const obstacle of obstacles) {
       if (obstacle.hit || Math.abs(obstacle.at - distance) > 39) continue;
       obstacle.hit = true;
-      if (jumpHeight < 52 && invulnerable === 0) {
-        hearts -= 1;
-        invulnerable = 1.2;
-        tone(220, 0.18, "triangle");
-        if (hearts === 0) {
-          updateHud();
-          finish(false);
-          return;
+      if (jumpHeight < 52 && (shieldTime > 0 || invulnerable === 0)) {
+        if (shieldTime > 0) {
+          shieldTime = 0;
+          tellDragon("Boblen reddede dig!");
+        } else {
+          hearts -= 1;
+          invulnerable = 1.2;
+          tellDragon("Pjuske hepper på dig!");
+          tone(220, 0.18, "triangle");
+          if (hearts === 0) {
+            updateHud();
+            finish();
+            return;
+          }
         }
       }
     }
 
-    if (distance >= RUN_LENGTH) {
-      updateHud();
-      finish(true);
-      return;
+    while (distance >= nextMilestone) {
+      nextMilestone += MILESTONE_LENGTH;
+      tellDragon("Hurra! Endnu et slot!");
+      tone(784, 0.16);
     }
+    checkChallenge();
+    obstacles = obstacles.filter((obstacle) => obstacle.at > distance - 100);
+    stars = stars.filter((star) => !star.collected && star.at > distance - 100);
+    powerups = powerups.filter((powerup) => !powerup.collected && powerup.at > distance - 100);
     updateHud();
   }
 
@@ -368,7 +533,8 @@
     ctx.beginPath();
     ctx.arc(5, -40, 2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#fb7185";
+    const scarfColors = ["#fb7185", "#36b9a5", "#ffcb55", "#a78bfa"];
+    ctx.fillStyle = scarfColors[Math.min(3, save.challengeWins)];
     ctx.beginPath();
     ctx.roundRect(-21, -20, 8, 20, 4);
     ctx.fill();
@@ -437,8 +603,9 @@
     ctx.lineTo(0, GROUND);
     ctx.fill();
 
-    const castleX = state === "home" ? 760 : 245 + Math.max(0, RUN_LENGTH - distance) * 0.7;
-    if (state === "home" || distance > RUN_LENGTH - 700) drawCastle(castleX, GROUND);
+    const milestoneRemaining = MILESTONE_LENGTH - (distance % MILESTONE_LENGTH);
+    const castleX = state === "home" ? 760 : 245 + milestoneRemaining * 0.7;
+    if (state === "home" || milestoneRemaining <= 700) drawCastle(castleX, GROUND);
     ctx.fillStyle = "#79c96f";
     ctx.fillRect(0, GROUND, WIDTH, HEIGHT - GROUND);
     ctx.fillStyle = "#d4a96c";
@@ -452,6 +619,25 @@
       ctx.beginPath();
       ctx.ellipse(x, GROUND + 55 + (i % 2) * 16, 6, 3, 0, 0, Math.PI * 2);
       ctx.fill();
+    }
+    for (const routeY of [GROUND - 38, GROUND - 132]) {
+      const routeStars = stars.filter((star) => star.y === routeY && isForkStretch(star.at));
+      ctx.strokeStyle = routeY === GROUND - 38 ? "#fff8d899" : "#fff9a899";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([5, 8]);
+      ctx.beginPath();
+      let drawingRoute = false;
+      let previousAt = -Infinity;
+      for (const star of routeStars) {
+        const x = 245 + (star.at - distance) * 1.04;
+        if (star.at - previousAt > 120) drawingRoute = false;
+        if (!drawingRoute) ctx.moveTo(x, routeY);
+        else ctx.lineTo(x, routeY);
+        drawingRoute = true;
+        previousAt = star.at;
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
     for (const obstacle of obstacles) {
       const x = 245 + (obstacle.at - distance) * 1.04;
@@ -499,15 +685,59 @@
       ctx.restore();
     }
 
-    const dragonX = state === "home" ? 715 : Math.max(275, 55 + (distance / RUN_LENGTH) * 150 + (hearts < 3 ? 18 : 0));
+    const powerupIcons = { magnet: "🧲", shield: "🫧", spring: "🪽" };
+    for (const powerup of powerups) {
+      if (powerup.collected) continue;
+      const x = 245 + (powerup.at - distance) * 1.04;
+      if (x < -35 || x > WIDTH + 35) continue;
+      ctx.font = "30px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(powerupIcons[powerup.kind], x, GROUND - 49);
+    }
+
+    const dragonX = state === "home" ? 715 : Math.max(105, 55 + Math.min(1, distance / 6000) * 150 + (hearts < 3 ? 18 : 0));
     drawDragon(dragonX, GROUND - 45 + Math.sin(elapsed * 4) * 5, 1.03);
+    if (dragonMessageTime > 0 && state === "playing") {
+      ctx.font = "800 14px Nunito, sans-serif";
+      const messageWidth = Math.min(330, ctx.measureText(dragonMessage).width + 28);
+      const bubbleX = Math.min(WIDTH - messageWidth - 12, Math.max(12, dragonX - messageWidth / 2));
+      roundedRect(bubbleX, GROUND - 126, messageWidth, 34, 12, "#fffef4");
+      ctx.fillStyle = "#365f65";
+      ctx.textAlign = "center";
+      ctx.fillText(dragonMessage, bubbleX + messageWidth / 2, GROUND - 104, messageWidth - 16);
+    }
     drawHero(245, GROUND, jumpHeight);
 
-    if (state === "home") {
+    if (state === "playing" && challenge) {
+      const progress = Math.min(challenge.goal, challengeProgress());
+      const label = `OPGAVE: ${challenge.label} · ${formatNumber.format(progress)}/${formatNumber.format(challenge.goal)}`;
+      ctx.font = "800 16px Nunito, sans-serif";
+      const bannerWidth = Math.min(WIDTH - 30, ctx.measureText(label).width + 28);
+      roundedRect((WIDTH - bannerWidth) / 2, 16, bannerWidth, 34, 12, "#fffef4eF");
+      ctx.fillStyle = "#365f65";
+      ctx.textAlign = "center";
+      ctx.fillText(label, WIDTH / 2, 39, bannerWidth - 18);
+    } else if (state === "home") {
       ctx.fillStyle = "#fff";
       ctx.font = "800 18px Nunito, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("Liva, Pjuske og en hel bunke stjerner!", WIDTH / 2, 493);
+    }
+
+    if (state === "playing") {
+      const activeEffects = [
+        magnetTime > 0 && `🧲 ${Math.ceil(magnetTime)}s`,
+        shieldTime > 0 && `🫧 ${Math.ceil(shieldTime)}s`,
+        springTime > 0 && `🪽 ${Math.ceil(springTime)}s`,
+      ].filter(Boolean).join("  ·  ");
+      if (activeEffects) {
+        ctx.font = "800 16px Nunito, sans-serif";
+        const statusWidth = Math.min(WIDTH - 30, ctx.measureText(activeEffects).width + 28);
+        roundedRect((WIDTH - statusWidth) / 2, 58, statusWidth, 34, 12, "#fffef4eF");
+        ctx.fillStyle = "#365f65";
+        ctx.textAlign = "center";
+        ctx.fillText(activeEffects, WIDTH / 2, 81, statusWidth - 18);
+      }
     }
   }
 

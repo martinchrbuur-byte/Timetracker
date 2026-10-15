@@ -4,8 +4,11 @@ test("player can start, pause, resume, and return home", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Hjælp Liva til slottet!" })).toBeVisible();
+  await expect(page.locator("#screen-copy")).toContainText("for hver 1.000 meter");
+  await expect(page.locator("#distance")).toHaveText("1.000 m");
   await page.getByRole("button", { name: /LAD OS LØBE/ }).click();
   await expect(page.getByRole("button", { name: "Hop" })).toBeVisible();
+  await expect(page.locator("#game-tip")).toContainText("Opgave");
 
   await page.getByRole("button", { name: "Sæt spillet på pause" }).click();
   await expect(page.getByText("PAUSE")).toBeVisible();
