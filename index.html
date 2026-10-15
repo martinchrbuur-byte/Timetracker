@@ -30,7 +30,7 @@
     <section class="game-card" aria-label="Spillet Drageflugt">
       <div class="scorebar">
         <div class="score-item"><span class="score-label">STJERNER</span><strong id="score">0</strong></div>
-        <div class="score-item distance-item"><span class="score-label">TIL SLOTTET</span><strong id="distance">3.000 m</strong></div>
+        <div class="score-item distance-item"><span class="score-label">TIL NÆSTE SLOT</span><strong id="distance">1.000 m</strong></div>
         <div class="score-item lives-item"><span class="score-label">HJERTER</span><strong id="lives" aria-label="Tre hjerter">❤️❤️❤️</strong></div>
       </div>
 
@@ -42,8 +42,8 @@
           <div class="screen-emoji" id="screen-emoji" aria-hidden="true">🏰</div>
           <p class="eyebrow" id="screen-eyebrow">ET SJOVT LØBEEVENTYR</p>
           <h1 id="screen-title">Hjælp Liva til slottet!</h1>
-          <p class="screen-copy" id="screen-copy">De søde drager vil gerne lege fangeleg. Hop over sten, snup stjerner, og løb hele vejen til det trygge slot!</p>
-          <div class="instruction"><span aria-hidden="true">👆</span><span>Tryk på spillebanen eller hop-knappen for at hoppe.</span></div>
+          <p class="screen-copy" id="screen-copy">Løb så langt du kan! Hop over sten, vælg en stjernesti, og find magiske hjælpere. Slottet holder fest for dig for hver 1.000 meter!</p>
+          <div class="instruction"><span aria-hidden="true">👆</span><span>Tryk for at hoppe. De lave stjerner er sikre; de høje giver flere point!</span></div>
           <button class="play-button" id="play-button" type="button">LAD OS LØBE! <span aria-hidden="true">🏃</span></button>
           <p class="record" id="record">Din bedste tur: 0 stjerner</p>
         </section>
@@ -54,7 +54,7 @@
         </div>
       </div>
       <footer class="game-footer">
-        <div class="tip"><span aria-hidden="true">💡</span><span>Et godt hop hjælper dig over forhindringerne!</span></div>
+        <div class="tip"><span aria-hidden="true">💡</span><span id="game-tip">Et godt hop hjælper dig over forhindringerne!</span></div>
         <button class="jump-button" id="jump-button" type="button" aria-label="Hop">HOP! <span aria-hidden="true">⬆️</span></button>
       </footer>
     </section>
