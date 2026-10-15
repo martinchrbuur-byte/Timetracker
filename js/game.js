@@ -205,6 +205,11 @@
   }
 
   function showHome() {
+    if (state === "paused") {
+      save.best = Math.max(save.best, score);
+      save.bestDistance = Math.max(save.bestDistance, Math.floor(distance));
+      persist();
+    }
     state = "home";
     score = 0;
     distance = 0;
@@ -717,6 +722,22 @@
       ctx.font = "800 18px Nunito, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("Liva, Pjuske og en hel bunke stjerner!", WIDTH / 2, 493);
+    }
+
+    if (state === "playing") {
+      const activeEffects = [
+        magnetTime > 0 && `🧲 ${Math.ceil(magnetTime)}s`,
+        shieldTime > 0 && `🫧 ${Math.ceil(shieldTime)}s`,
+        springTime > 0 && `🪽 ${Math.ceil(springTime)}s`,
+      ].filter(Boolean).join("  ·  ");
+      if (activeEffects) {
+        ctx.font = "800 16px Nunito, sans-serif";
+        const statusWidth = Math.min(WIDTH - 30, ctx.measureText(activeEffects).width + 28);
+        roundedRect((WIDTH - statusWidth) / 2, 58, statusWidth, 34, 12, "#fffef4eF");
+        ctx.fillStyle = "#365f65";
+        ctx.textAlign = "center";
+        ctx.fillText(activeEffects, WIDTH / 2, 81, statusWidth - 18);
+      }
     }
   }
 
