@@ -168,7 +168,7 @@
   function syncFullscreen() {
     const isStandalone = window.navigator.standalone === true
       || window.matchMedia("(display-mode: standalone)").matches
-      || window.matchMedia("(display-mode: fullscreen)").matches;
+      || (!document.fullscreenElement && window.matchMedia("(display-mode: fullscreen)").matches);
     const isFullscreen = Boolean(document.fullscreenElement || isStandalone);
     document.body.classList.toggle("fullscreen-mode", isFullscreen);
     document.body.classList.toggle("is-standalone", isStandalone);
