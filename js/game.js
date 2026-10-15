@@ -190,6 +190,11 @@
     ui.fullscreenHint.hidden = false;
   }
 
+  function enterFullscreen() {
+    if (document.fullscreenElement || !document.documentElement.requestFullscreen) return;
+    document.documentElement.requestFullscreen().catch(() => {});
+  }
+
   function finish(won) {
     state = "result";
     save.best = Math.max(save.best, score);
@@ -514,7 +519,10 @@
     requestAnimationFrame(frame);
   }
 
-  ui.play.addEventListener("click", beginRun);
+  ui.play.addEventListener("click", () => {
+    beginRun();
+    enterFullscreen();
+  });
   ui.jump.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     jump();
