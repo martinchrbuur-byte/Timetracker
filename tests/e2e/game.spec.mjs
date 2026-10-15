@@ -18,13 +18,16 @@ test("player can start, pause, resume, and return home", async ({ page }) => {
 });
 
 test("starting a run requests fullscreen when supported", async ({ page }) => {
-  await page.addInitScript(() => {
-    document.documentElement.requestFullscreen = () => {
-      window.fullscreenRequested = true;
-      return Promise.resolve();
-    };
-  });
   await page.goto("/");
+  await page.evaluate(() => {
+    Object.defineProperty(document.documentElement, "requestFullscreen", {
+      configurable: true,
+      value: () => {
+        window.fullscreenRequested = true;
+        return Promise.resolve();
+      },
+    });
+  });
 
   await page.getByRole("button", { name: /LAD OS LØBE/ }).click();
 
