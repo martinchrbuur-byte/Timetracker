@@ -17,6 +17,7 @@
 body {
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100svh;
   margin: 0;
   background:
     radial-gradient(ellipse at 14% 0%, #fff8d7 0, transparent 35%),
@@ -75,6 +76,7 @@ canvas { display: block; width: 100%; height: 100%; }
 .text-button { border: 0; background: transparent; color: #61798b; font-weight: 800; text-decoration: underline; cursor: pointer; }
 [hidden] { display: none !important; }
 .game-hint { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 7px 13px; border-radius: 14px; background: #fffef0e8; color: #526d7a; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.fullscreen-hint { margin: 8px 0 0; color: var(--muted); text-align: center; font-size: 12px; font-weight: 800; }
 
 .game-footer { min-height: 69px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 16px; background: #fff; }
 .tip { display: flex; align-items: center; gap: 8px; color: #61798b; font-size: 12px; font-weight: 800; }
@@ -82,6 +84,31 @@ canvas { display: block; width: 100%; height: 100%; }
 .jump-button { min-width: 111px; min-height: 48px; border: 0; border-radius: 17px; background: var(--yellow); box-shadow: 0 5px 0 #e9ac36; color: #634d15; font-size: 16px; font-weight: 900; cursor: pointer; touch-action: manipulation; transition: transform .15s; }
 .jump-button:active { transform: translateY(3px); box-shadow: 0 2px 0 #e9ac36; }
 .footer-note { margin: 17px 0 0; color: #78909a; text-align: center; font-size: 12px; font-weight: 700; }
+
+body.fullscreen-mode {
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+.fullscreen-mode .game-shell {
+  display: flex;
+  width: 100%;
+  height: 100dvh;
+  flex-direction: column;
+  gap: 6px;
+  padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+}
+
+.fullscreen-mode .topbar { flex: 0 0 auto; margin: 0; }
+.fullscreen-mode .game-card { display: flex; min-height: 0; flex: 1; flex-direction: column; border-radius: 14px; }
+.fullscreen-mode .scorebar { flex: 0 0 auto; }
+.fullscreen-mode .stage { display: grid; min-height: 0; flex: 1; place-items: center; aspect-ratio: auto; }
+.fullscreen-mode canvas { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; touch-action: none; }
+.fullscreen-mode .screen-card { position: absolute; top: 50%; left: 50%; margin: 0; transform: translate(-50%, -50%); }
+.fullscreen-mode .game-footer { flex: 0 0 auto; min-height: 55px; }
+.fullscreen-mode .tip, .fullscreen-mode .footer-note { display: none; }
+.fullscreen-mode .jump-button { width: 100%; }
+.is-standalone #fullscreen-button { display: none; }
 
 @media (max-width: 640px) {
   .game-shell { padding: 12px 10px; }
@@ -107,12 +134,19 @@ canvas { display: block; width: 100%; height: 100%; }
   .tip span:first-child { font-size: 16px; }
   .jump-button { min-width: 92px; min-height: 43px; border-radius: 14px; font-size: 14px; }
   .game-hint { top: 5px; padding: 5px 9px; font-size: 10px; }
+  .fullscreen-mode .scorebar { min-height: 46px; padding: 5px 9px; }
+  .fullscreen-mode .game-footer { min-height: 50px; padding: 5px 8px; }
+  .fullscreen-mode .jump-button { min-height: 42px; }
 }
 
 @media (max-width: 420px) {
   .stage { display: grid; place-items: center; aspect-ratio: auto; }
   canvas { grid-area: 1 / 1; height: auto; align-self: center; }
   .screen-card { position: relative; top: auto; left: auto; grid-area: 1 / 1; margin: 12px auto; transform: none; }
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  body { min-height: 100dvh; }
 }
 
 @media (prefers-reduced-motion: reduce) {

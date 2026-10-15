@@ -16,3 +16,17 @@ test("player can start, pause, resume, and return home", async ({ page }) => {
   await page.getByRole("button", { name: "Tilbage til forsiden" }).click();
   await expect(page.getByRole("heading", { name: "Hjælp Liva til slottet!" })).toBeVisible();
 });
+
+test("player can jump by touching the game and get the iPhone fullscreen instructions", async ({ page }) => {
+  await page.goto("/");
+
+  await page.evaluate(() => {
+    Object.defineProperty(document.documentElement, "requestFullscreen", { configurable: true, value: undefined });
+  });
+  await page.getByRole("button", { name: "Vis fuld skærm" }).click();
+  await expect(page.getByRole("status")).toContainText("Føj til hjemmeskærm");
+
+  await page.getByRole("button", { name: /LAD OS LØBE/ }).click();
+  await page.locator("#game-canvas").dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true });
+  await expect(page.getByRole("button", { name: "Hop" })).toBeVisible();
+});

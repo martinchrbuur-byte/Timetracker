@@ -2,10 +2,15 @@
 <html lang="da">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#bdeef7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="description" content="Hjælp Liva med at løbe fra de fjollede drager og samle stjerner på vejen til slottet!">
   <title>Drageflugt – Løb til slottet!</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/images/app-icon.svg">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -16,6 +21,7 @@
         <span>DRAGEFLUGT<small>LØB TIL SLOTTET!</small></span>
       </a>
       <div class="top-actions">
+        <button class="icon-button" id="fullscreen-button" type="button" aria-label="Vis fuld skærm" title="Fuld skærm">⛶</button>
         <button class="icon-button" id="sound-button" type="button" aria-label="Slå lyd fra" title="Lyd">🔊</button>
         <button class="icon-button" id="pause-button" type="button" aria-label="Sæt spillet på pause" title="Pause" hidden>Ⅱ</button>
       </div>
@@ -37,7 +43,7 @@
           <p class="eyebrow" id="screen-eyebrow">ET SJOVT LØBEEVENTYR</p>
           <h1 id="screen-title">Hjælp Liva til slottet!</h1>
           <p class="screen-copy" id="screen-copy">De søde drager vil gerne lege fangeleg. Hop over sten, snup stjerner, og løb hele vejen til det trygge slot!</p>
-          <div class="instruction"><span aria-hidden="true">⬆️</span><span>Tryk <b>MELLEMRUM</b>, <b>↑</b> eller på hop-knappen for at hoppe.</span></div>
+          <div class="instruction"><span aria-hidden="true">👆</span><span>Tryk på spillebanen eller hop-knappen for at hoppe.</span></div>
           <button class="play-button" id="play-button" type="button">LAD OS LØBE! <span aria-hidden="true">🏃</span></button>
           <p class="record" id="record">Din bedste tur: 0 stjerner</p>
         </section>
@@ -53,6 +59,7 @@
         <button class="jump-button" id="jump-button" type="button" aria-label="Hop">HOP! <span aria-hidden="true">⬆️</span></button>
       </footer>
     </section>
+    <p class="fullscreen-hint" id="fullscreen-hint" role="status" aria-live="polite" hidden></p>
     <p class="footer-note">Et hyggeligt eventyr for små eventyrere <span aria-hidden="true">✨</span></p>
   </main>
   <script src="js/game.js"></script>
