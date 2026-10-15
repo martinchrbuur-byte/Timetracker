@@ -21,6 +21,8 @@
     jump: document.querySelector("#jump-button"),
     hint: document.querySelector("#game-hint"),
     sound: document.querySelector("#sound-button"),
+    fullscreen: document.querySelector("#fullscreen-button"),
+    fullscreenHint: document.querySelector("#fullscreen-hint"),
   };
 
   const SAVE_KEY = "drageflugt-save-v1";
@@ -161,6 +163,35 @@
     if (state !== "playing" || jumpHeight > 0) return;
     jumpVelocity = 680;
     tone(660, 0.08);
+  }
+
+  function syncFullscreen() {
+    const isStandalone = window.navigator.standalone === true
+      || window.matchMedia("(display-mode: standalone)").matches
+      || (!document.fullscreenElement && window.matchMedia("(display-mode: fullscreen)").matches);
+    const isFullscreen = Boolean(document.fullscreenElement || isStandalone);
+    document.body.classList.toggle("fullscreen-mode", isFullscreen);
+    document.body.classList.toggle("is-standalone", isStandalone);
+    ui.fullscreen.hidden = isStandalone;
+    ui.fullscreen.setAttribute("aria-label", isFullscreen ? "Afslut fuld skærm" : "Vis fuld skærm");
+    ui.fullscreenHint.hidden = true;
+  }
+
+  async function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    if (document.documentElement.requestFullscreen) {
+      try {
+        await document.documentElement.requestFullscreen();
+        return;
+      } catch {
+        // iPhone Safari only offers full-screen mode for installed web apps.
+      }
+    }
+    ui.fullscreenHint.textContent = "På iPhone: tryk Del og vælg Føj til hjemmeskærm for fuld skærm.";
+    ui.fullscreenHint.hidden = false;
   }
 
   function finish(won) {
@@ -494,6 +525,15 @@
     event.preventDefault();
     jump();
   });
+  canvas.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse") return;
+    event.preventDefault();
+    jump();
+  });
+  ui.fullscreen.addEventListener("click", toggleFullscreen);
+  document.addEventListener("fullscreenchange", syncFullscreen);
+  window.matchMedia("(display-mode: standalone)").addEventListener("change", syncFullscreen);
+  window.matchMedia("(display-mode: fullscreen)").addEventListener("change", syncFullscreen);
   ui.pause.addEventListener("click", pauseRun);
   ui.resume.addEventListener("click", pauseRun);
   ui.home.addEventListener("click", showHome);
@@ -523,6 +563,7 @@
 
   ui.sound.textContent = soundOn ? "🔊" : "🔇";
   ui.sound.setAttribute("aria-label", soundOn ? "Slå lyd fra" : "Slå lyd til");
+  syncFullscreen();
   showHome();
   requestAnimationFrame(frame);
 })();

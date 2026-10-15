@@ -1,0 +1,16 @@
+{
+  "name": "Drageflugt – Løb til slottet!",
+  "short_name": "Drageflugt",
+  "start_url": "./",
+  "display": "fullscreen",
+  "background_color": "#bdeef7",
+  "theme_color": "#bdeef7",
+  "icons": [
+    {
+      "src": "assets/images/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
