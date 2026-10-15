@@ -11,7 +11,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "python3 -m http.server 4173 --bind 127.0.0.1",
+    command: "node tests/e2e/server.mjs",
     url: "http://127.0.0.1:4173/index.html",
     reuseExistingServer: true,
     timeout: 30000,

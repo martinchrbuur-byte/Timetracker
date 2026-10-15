@@ -9,7 +9,7 @@ test("player can start, pause, resume, and return home", async ({ page }) => {
 
   await page.getByRole("button", { name: "Sæt spillet på pause" }).click();
   await expect(page.getByText("PAUSE")).toBeVisible();
-  await page.getByRole("button", { name: "FORTSÆT" }).click();
+  await page.getByRole("button", { name: /^FORTSÆT/ }).click();
   await expect(page.getByText("PAUSE")).toBeHidden();
 
   await page.getByRole("button", { name: "Sæt spillet på pause" }).click();
