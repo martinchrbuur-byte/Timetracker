@@ -59,4 +59,5 @@ test("iPhone home-screen mode fills the viewport without transient gameplay popu
   await expect(page.locator("body")).toHaveClass(/fullscreen-mode/);
   await expect(page.locator("#game-hint")).toHaveCount(0);
   await expect(page.locator("main")).toHaveCSS("height", "932px");
+  await expect(page.locator("#game-canvas")).toHaveCSS("object-fit", "fill");
 });
