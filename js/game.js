@@ -87,6 +87,13 @@
   let stars = [];
   let powerups = [];
   let clouds = [];
+  let heartPickups = [];
+  let particles = [];
+  let nextHeartAt = 1300;
+  let combo = 0;
+  let comboTimer = 0;
+  let shake = 0;
+  let perfectJumps = 0;
 
   function persist() {
     try {
@@ -181,6 +188,11 @@
       nextStarAt += 115;
     }
 
+    while (nextHeartAt < distance + 1500) {
+      heartPickups.push({ at: nextHeartAt, y: GROUND - 85, collected: false });
+      nextHeartAt += 1450;
+    }
+
     while (nextPowerupAt < distance + 1500) {
       const kinds = ["magnet", "shield", "spring"];
       powerups.push({ at: nextPowerupAt, kind: kinds[powerupIndex % kinds.length], collected: false });
@@ -204,6 +216,45 @@
     tellDragon(save.challengeWins <= 3 ? "Jubii! Et nyt tørklæde!" : "Jubii! Du klarede din opgave!");
   }
 
+  function resetPauseButton() {
+    ui.pause.textContent = "Ⅱ";
+    ui.pause.setAttribute("aria-label", "Sæt spillet på pause");
+  }
+
+  function resetEffects() {
+    invulnerable = 0;
+    magnetTime = 0;
+    shieldTime = 0;
+    springTime = 0;
+    combo = 0;
+    comboTimer = 0;
+    shake = 0;
+    perfectJumps = 0;
+    nextHeartAt = 1300;
+    heartPickups = [];
+    particles = [];
+    dragonMessage = "";
+    dragonMessageTime = 0;
+  }
+
+  function explode(x, y, kind) {
+    const colors = kind === "log" ? ["#9b684b", "#c28a5f", "#ffb347"] : ["#87979b", "#aab8b7", "#ffb347"];
+    for (let i = 0; i < 18; i += 1) {
+      const angle = Math.random() * Math.PI * 2;
+      const power = 60 + Math.random() * 190;
+      particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * power,
+        vy: Math.sin(angle) * power - 90,
+        life: 0.6 + Math.random() * 0.4,
+        age: 0,
+        size: 3 + Math.random() * 5,
+        color: colors[i % colors.length],
+      });
+    }
+  }
+
   function showHome() {
     if (state === "paused") {
       save.best = Math.max(save.best, score);
@@ -219,6 +270,8 @@
     obstacles = [];
     stars = [];
     powerups = [];
+    resetEffects();
+    resetPauseButton();
     ui.screen.hidden = false;
     ui.pauseCard.hidden = true;
     ui.pause.hidden = true;
@@ -240,10 +293,8 @@
     hearts = 3;
     jumpHeight = 0;
     jumpVelocity = 0;
-    invulnerable = 0;
-    magnetTime = 0;
-    shieldTime = 0;
-    springTime = 0;
+    resetEffects();
+    resetPauseButton();
     powerupsFound = 0;
     challengeComplete = false;
     elapsed = 0;
@@ -358,6 +409,16 @@
     shieldTime = Math.max(0, shieldTime - delta);
     springTime = Math.max(0, springTime - delta);
     dragonMessageTime = Math.max(0, dragonMessageTime - delta);
+    shake = Math.max(0, shake - delta);
+    comboTimer = Math.max(0, comboTimer - delta);
+    if (comboTimer === 0) combo = 0;
+    for (const particle of particles) {
+      particle.age += delta;
+      particle.x += particle.vx * delta;
+      particle.y += particle.vy * delta;
+      particle.vy += 700 * delta;
+    }
+    particles = particles.filter((particle) => particle.age < particle.life);
     ensureWorldContent();
     clouds.forEach((cloud) => {
       cloud.x -= 9 * delta;
@@ -375,10 +436,30 @@
         && (magnetTime > 0 || (starBottom >= heroTop && starTop <= heroBottom))
       ) {
         star.collected = true;
-        score += star.value || 1;
-        if (score % 5 === 0) tellDragon("Flot samlet!");
-        tone(880, 0.08);
+        combo += 1;
+        comboTimer = 1.6;
+        const bonus = combo >= 5 ? 1 : 0;
+        const before = score;
+        score += (star.value || 1) + bonus;
+        if (combo === 5) tellDragon("Stjerne-stime! Ekstra point!");
+        else if (Math.floor(score / 5) > Math.floor(before / 5)) tellDragon("Flot samlet!");
+        tone(880 + Math.min(combo, 8) * 30, 0.08);
       }
+    }
+
+    for (const heart of heartPickups) {
+      const heroTop = GROUND - jumpHeight - 57;
+      const heroBottom = GROUND - jumpHeight;
+      if (heart.collected || Math.abs(heart.at - distance) > 34 || heart.y + 16 < heroTop || heart.y - 16 > heroBottom) continue;
+      heart.collected = true;
+      if (hearts < 3) {
+        hearts += 1;
+        tellDragon("Et ekstra hjerte! 💖");
+      } else {
+        score += 3;
+        tellDragon("Hjertebonus: +3 stjerner!");
+      }
+      tone(988, 0.14);
     }
 
     for (const powerup of powerups) {
@@ -401,7 +482,20 @@
     for (const obstacle of obstacles) {
       if (obstacle.hit || Math.abs(obstacle.at - distance) > 39) continue;
       obstacle.hit = true;
+      if (jumpHeight >= 52) {
+        score += 1;
+        perfectJumps += 1;
+        tellDragon("Flot hop! +1 stjerne");
+        tone(784, 0.08);
+      }
+      if (jumpHeight < 52) {
+        obstacle.exploded = 0.001;
+        explode(245, GROUND - 18, obstacle.kind);
+        tone(150, 0.2, "sawtooth");
+      }
       if (jumpHeight < 52 && (shieldTime > 0 || invulnerable === 0)) {
+        shake = 0.3;
+        combo = 0;
         if (shieldTime > 0) {
           shieldTime = 0;
           tellDragon("Boblen reddede dig!");
@@ -425,7 +519,11 @@
       tone(784, 0.16);
     }
     checkChallenge();
+    for (const obstacle of obstacles) {
+      if (obstacle.exploded) obstacle.exploded += delta;
+    }
     obstacles = obstacles.filter((obstacle) => obstacle.at > distance - 100);
+    heartPickups = heartPickups.filter((heart) => !heart.collected && heart.at > distance - 100);
     stars = stars.filter((star) => !star.collected && star.at > distance - 100);
     powerups = powerups.filter((powerup) => !powerup.collected && powerup.at > distance - 100);
     updateHud();
@@ -573,6 +671,8 @@
   }
 
   function drawScene() {
+    ctx.save();
+    if (shake > 0 && state === "playing") ctx.translate((Math.random() - 0.5) * 10 * shake / 0.3, (Math.random() - 0.5) * 10 * shake / 0.3);
     const sky = ctx.createLinearGradient(0, 0, 0, HEIGHT);
     sky.addColorStop(0, "#91ddf5");
     sky.addColorStop(0.67, "#d3f4e8");
@@ -642,6 +742,28 @@
     for (const obstacle of obstacles) {
       const x = 245 + (obstacle.at - distance) * 1.04;
       if (x < -70 || x > WIDTH + 70) continue;
+      if (obstacle.exploded) {
+        const t = Math.min(1, obstacle.exploded / 0.45);
+        if (t < 1) {
+          ctx.save();
+          ctx.globalAlpha = 1 - t;
+          ctx.fillStyle = "#ffd36b";
+          ctx.beginPath();
+          ctx.arc(x, GROUND - 20, 18 + t * 46, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ff8a4c";
+          ctx.beginPath();
+          ctx.arc(x, GROUND - 20, 10 + t * 28, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.fillStyle = obstacle.kind === "log" ? "#9b684b" : "#87979b";
+        ctx.beginPath();
+        ctx.ellipse(x - 12, GROUND - 3, 8, 4, 0, 0, Math.PI * 2);
+        ctx.ellipse(x + 10, GROUND - 2, 6, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        continue;
+      }
       if (obstacle.kind === "log") {
         roundedRect(x - 28, GROUND - 22, 56, 24, 11, "#9b684b");
         ctx.fillStyle = "#c28a5f";
@@ -685,6 +807,15 @@
       ctx.restore();
     }
 
+    for (const heart of heartPickups) {
+      if (heart.collected) continue;
+      const x = 245 + (heart.at - distance) * 1.04;
+      if (x < -35 || x > WIDTH + 35) continue;
+      ctx.font = "30px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("❤️", x, heart.y + 10 + Math.sin(elapsed * 5 + heart.at) * 4);
+    }
+
     const powerupIcons = { magnet: "🧲", shield: "🫧", spring: "🪽" };
     for (const powerup of powerups) {
       if (powerup.collected) continue;
@@ -707,6 +838,18 @@
       ctx.fillText(dragonMessage, bubbleX + messageWidth / 2, GROUND - 104, messageWidth - 16);
     }
     drawHero(245, GROUND, jumpHeight);
+    for (const particle of particles) {
+      ctx.globalAlpha = Math.max(0, 1 - particle.age / particle.life);
+      ctx.fillStyle = particle.color;
+      ctx.fillRect(particle.x - particle.size / 2, particle.y - particle.size / 2, particle.size, particle.size);
+    }
+    ctx.globalAlpha = 1;
+    if (state === "playing" && combo >= 3) {
+      ctx.font = "800 18px Nunito, sans-serif";
+      ctx.fillStyle = "#e46e61";
+      ctx.textAlign = "center";
+      ctx.fillText(`Stime x${combo}`, 245, GROUND - jumpHeight - 78);
+    }
 
     if (state === "playing" && challenge) {
       const progress = Math.min(challenge.goal, challengeProgress());
@@ -739,6 +882,7 @@
         ctx.fillText(activeEffects, WIDTH / 2, 81, statusWidth - 18);
       }
     }
+    ctx.restore();
   }
 
   function frame(now) {

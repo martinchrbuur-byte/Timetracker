@@ -153,6 +153,35 @@ body.fullscreen-mode {
   .screen-card { position: relative; top: auto; left: auto; grid-area: 1 / 1; margin: 12px auto; transform: none; }
 }
 
+@media (orientation: landscape) and (max-height: 520px) {
+  body { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+  .game-shell { display: flex; width: 100%; max-width: none; height: 100vh; height: 100dvh; flex-direction: column; gap: 4px; padding: max(4px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+  .topbar { flex: 0 0 auto; margin: 0; }
+  .brand { font-size: 14px; }
+  .brand small { display: none; }
+  .brand-icon { width: 30px; height: 30px; border-radius: 10px; font-size: 18px; }
+  .icon-button { min-width: 34px; height: 32px; font-size: 16px; }
+  .game-card { display: flex; min-height: 0; flex: 1; flex-direction: column; border-width: 3px; border-radius: 14px; box-shadow: none; }
+  .scorebar { min-height: 0; flex: 0 0 auto; padding: 3px 12px; }
+  .score-item strong { font-size: 15px; line-height: 1.1; }
+  .score-label { font-size: 8px; }
+  .stage { display: grid; min-height: 0; flex: 1; place-items: center; aspect-ratio: auto; }
+  canvas { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; touch-action: none; }
+  .screen-card, .pause-card { position: absolute; top: 50%; left: 50%; margin: 0; transform: translate(-50%, -50%); padding: 8px 18px; border-width: 3px; }
+  .screen-card { width: min(560px, calc(100% - 20px)); }
+  .screen-emoji { font-size: 26px; }
+  .eyebrow { margin: 2px 0; font-size: 9px; }
+  .screen-card h1 { margin: 2px 0 4px; font-size: 20px; }
+  .screen-copy { margin-bottom: 4px; font-size: 11px; line-height: 1.3; }
+  .instruction { margin: 4px auto; font-size: 10px; }
+  .play-button { min-height: 36px; padding: 0 16px; font-size: 14px; }
+  .record { margin-top: 4px; font-size: 10px; }
+  .game-footer { flex: 0 0 auto; min-height: 44px; padding: 4px 10px; }
+  .tip { font-size: 11px; }
+  .jump-button { min-height: 38px; min-width: 120px; font-size: 14px; }
+  .footer-note, .fullscreen-hint { display: none; }
+}
+
 @media (display-mode: standalone), (display-mode: fullscreen) {
   body { min-height: 100dvh; }
 }
