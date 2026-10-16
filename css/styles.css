@@ -179,7 +179,7 @@ body.fullscreen-mode {
   .game-footer { flex: 0 0 auto; min-height: 44px; padding: 4px 10px; }
   .tip { font-size: 11px; }
   .jump-button { min-height: 38px; min-width: 120px; font-size: 14px; }
-  .footer-note, .fullscreen-hint { display: none; }
+  .footer-note { display: none; }
 }
 
 @media (display-mode: standalone), (display-mode: fullscreen) {

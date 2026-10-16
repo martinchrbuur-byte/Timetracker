@@ -396,7 +396,18 @@
   }
 
   function update(delta) {
-    if (state !== "playing") return;
+    if (state !== "playing" && state !== "result") return;
+    for (const particle of particles) {
+      particle.age += delta;
+      particle.x += particle.vx * delta;
+      particle.y += particle.vy * delta;
+      particle.vy += 700 * delta;
+    }
+    particles = particles.filter((particle) => particle.age < particle.life);
+    for (const obstacle of obstacles) {
+      if (obstacle.exploded) obstacle.exploded += delta;
+    }
+    if (state === "result") return;
     elapsed += delta;
     const difficulty = getDifficulty();
     const speed = SPEED + difficulty * 3;
@@ -412,13 +423,6 @@
     shake = Math.max(0, shake - delta);
     comboTimer = Math.max(0, comboTimer - delta);
     if (comboTimer === 0) combo = 0;
-    for (const particle of particles) {
-      particle.age += delta;
-      particle.x += particle.vx * delta;
-      particle.y += particle.vy * delta;
-      particle.vy += 700 * delta;
-    }
-    particles = particles.filter((particle) => particle.age < particle.life);
     ensureWorldContent();
     clouds.forEach((cloud) => {
       cloud.x -= 9 * delta;
@@ -519,10 +523,7 @@
       tone(784, 0.16);
     }
     checkChallenge();
-    for (const obstacle of obstacles) {
-      if (obstacle.exploded) obstacle.exploded += delta;
-    }
-    obstacles = obstacles.filter((obstacle) => obstacle.at > distance - 100);
+    obstacles = obstacles.filter((obstacle) => 245 + (obstacle.at - distance) * 1.04 > -70);
     heartPickups = heartPickups.filter((heart) => !heart.collected && heart.at > distance - 100);
     stars = stars.filter((star) => !star.collected && star.at > distance - 100);
     powerups = powerups.filter((powerup) => !powerup.collected && powerup.at > distance - 100);
