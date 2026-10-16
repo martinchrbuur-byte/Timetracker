@@ -641,7 +641,7 @@
     }
     for (const obstacle of obstacles) {
       const x = 245 + (obstacle.at - distance) * 1.04;
-      if (x < -70 || x > WIDTH + 70 || obstacle.hit) continue;
+      if (x < -70 || x > WIDTH + 70) continue;
       if (obstacle.kind === "log") {
         roundedRect(x - 28, GROUND - 22, 56, 24, 11, "#9b684b");
         ctx.fillStyle = "#c28a5f";
