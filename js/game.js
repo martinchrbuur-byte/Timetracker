@@ -9,9 +9,22 @@
   let used = LS.get("wordle.used", []);
   let g; // current game: {answer, guesses, current, status}
   let busy = false;
+  const presentationTimers = new Set();
 
   const saveGame = () => LS.set("wordle.game", g);
   const vibrate = (n) => { if (settings.haptics && navigator.vibrate) navigator.vibrate(n); };
+  function schedulePresentation(callback, delay, game = g) {
+    const timer = setTimeout(() => {
+      presentationTimers.delete(timer);
+      if (g === game) callback();
+    }, delay);
+    presentationTimers.add(timer);
+  }
+  function clearPresentation() {
+    presentationTimers.forEach(clearTimeout);
+    presentationTimers.clear();
+    busy = false;
+  }
 
   function applyTheme() {
     document.body.classList.toggle("light", settings.light);
@@ -28,6 +41,8 @@
   }
 
   function newGame() {
+    clearPresentation();
+    $("#announcer").textContent = "";
     g = { answer: pickAnswer(), guesses: [], current: "", status: "playing" };
     saveGame(); buildBoard(); resetKeys(); busy = false;
   }
@@ -47,8 +62,8 @@
   function buildBoard() {
     const b = $("#board"); b.innerHTML = "";
     for (let r = 0; r < ROWS; r++) {
-      const row = document.createElement("div"); row.className = "row";
-      for (let c = 0; c < COLS; c++) { const t = document.createElement("div"); t.className = "tile"; row.appendChild(t); }
+      const row = document.createElement("div"); row.className = "row"; row.setAttribute("role", "group"); row.setAttribute("aria-label", `Guess ${r + 1}`);
+      for (let c = 0; c < COLS; c++) { const t = document.createElement("div"); t.className = "tile"; t.setAttribute("role", "img"); t.setAttribute("aria-label", `${ord(c + 1)} letter, empty`); row.appendChild(t); }
       b.appendChild(row);
     }
     g.guesses.forEach((w, r) => paintRow(r, w, evaluate(w, g.answer), false));
@@ -62,11 +77,14 @@
     [...rowEl(r).children].forEach((t, i) => {
       t.textContent = word[i];
       t.classList.add("filled");
+      const state = res[i] === "correct" ? "correct" : res[i] === "present" ? "present elsewhere" : "not in the word";
+      t.setAttribute("aria-label", `${ord(i + 1)} letter ${word[i].toUpperCase()}, ${state}`);
       if (animate) {
         t.style.animationDelay = i * 300 + "ms"; t.classList.add("flip");
-        setTimeout(() => t.classList.add(res[i]), i * 300 + 250);
+        schedulePresentation(() => t.classList.add(res[i]), i * 300 + 250);
       } else t.classList.add(res[i]);
     });
+    if (animate) $("#announcer").textContent = `Guess ${r + 1}: ${[...word].map((letter, i) => `${ord(i + 1)} letter ${letter.toUpperCase()}, ${res[i] === "correct" ? "correct" : res[i] === "present" ? "present elsewhere" : "not in the word"}`).join("; ")}`;
   }
 
   function renderCurrent() {
@@ -76,6 +94,7 @@
       const ch = g.current[i] || "";
       t.textContent = ch;
       t.classList.toggle("filled", !!ch);
+      t.setAttribute("aria-label", `${ord(i + 1)} letter${ch ? ` ${ch.toUpperCase()}` : ""}${ch ? "" : ", empty"}`);
     });
   }
 
@@ -86,6 +105,7 @@
       [...rw].forEach((k) => {
         const b = document.createElement("button");
         b.className = "key"; b.dataset.key = k === "+" ? "enter" : k === "-" ? "back" : k;
+        b.type = "button";
         if (k === "+") { b.textContent = "Enter"; b.classList.add("wide"); }
         else if (k === "-") { b.innerHTML = "&#9003;"; b.classList.add("wide"); b.setAttribute("aria-label", "Backspace"); }
         else b.textContent = k;
@@ -93,9 +113,12 @@
       });
       kb.appendChild(row);
     });
-    kb.addEventListener("pointerdown", (e) => {
+    kb.addEventListener("click", (e) => {
       const b = e.target.closest(".key"); if (!b) return;
-      e.preventDefault(); press(b.dataset.key);
+      press(b.dataset.key);
+    });
+    kb.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") e.stopPropagation();
     });
   }
 
@@ -145,11 +168,15 @@
     const r = g.guesses.length, res = evaluate(w, g.answer);
     g.guesses.push(w); g.current = "";
     const won = w === g.answer, lost = !won && g.guesses.length === ROWS;
-    if (won || lost) g.status = won ? "won" : "lost";
+    if (won || lost) {
+      g.status = won ? "won" : "lost";
+      recordResult(won, r + 1);
+    }
     saveGame();
     busy = true;
     paintRow(r, w, res, true);
-    setTimeout(() => {
+    const game = g;
+    schedulePresentation(() => {
       updateKeys();
       if (won) {
         [...rowEl(r).children].forEach((t, i) => { t.style.animationDelay = i * 100 + "ms"; t.classList.remove("flip"); t.classList.add("bounce"); });
@@ -157,7 +184,7 @@
         vibrate([30, 40, 30]);
       } else if (lost) toast(g.answer.toUpperCase());
       busy = false;
-      if (won || lost) { recordResult(won, r + 1); setTimeout(showResult, won ? 1500 : 1200); }
+      if (won || lost) schedulePresentation(showResult, won ? 1500 : 1200, game);
     }, COLS * 300 + 300);
   }
 
@@ -168,9 +195,17 @@
     LS.set("wordle.stats", stats);
   }
 
-  const modal = $("#modal"), body = $("#modal-body");
-  function open(html) { body.innerHTML = html; modal.classList.remove("hidden"); }
-  function close() { modal.classList.add("hidden"); }
+  const modal = $("#modal"), body = $("#modal-body"), app = $("#app");
+  let returnFocus = null;
+  function open(html) {
+    returnFocus = document.activeElement;
+    body.innerHTML = html; modal.classList.remove("hidden"); app.inert = true;
+    $("#modal-close").focus();
+  }
+  function close() {
+    modal.classList.add("hidden"); app.inert = false;
+    if (returnFocus?.isConnected) returnFocus.focus();
+  }
   modal.addEventListener("pointerdown", (e) => { if (e.target === modal) close(); });
   $("#modal-close").addEventListener("click", close);
 
@@ -258,7 +293,17 @@
   $("#btn-settings").onclick = showSettings;
 
   document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey || e.metaKey || e.altKey || !modal.classList.contains("hidden")) return;
+    if (!modal.classList.contains("hidden")) {
+      if (e.key === "Tab") {
+        const focusable = [...modal.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if (!first) e.preventDefault();
+        else if (e.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+      }
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === "Enter") press("enter");
     else if (e.key === "Backspace") press("back");
     else if (/^[a-zA-Z]$/.test(e.key)) press(e.key.toLowerCase());
@@ -270,6 +315,6 @@
   buildKeys();
   const saved = LS.get("wordle.game", null);
   if (saved && saved.answer && saved.status === "playing") { g = saved; buildBoard(); }
-  else if (saved && saved.answer && saved.status !== "playing") { g = saved; buildBoard(); setTimeout(showResult, 300); }
+  else if (saved && saved.answer && saved.status !== "playing") { g = saved; buildBoard(); schedulePresentation(showResult, 300); }
   else { newGame(); showHelp(); }
 })();
